@@ -5,6 +5,7 @@ state("witness64_d3d11") {}
 // TODO: Random_Generator::get
 // TODO: Challenge start / cinema initial solve return 3?
 // TODO: Load EP count on run start / init
+// TODO: Don't start after a certain time
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -127,11 +128,6 @@ init {
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
   int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
   print("witness64_d3d11.globals = "+basePointer.ToString("X"));
-  
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
-  int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
-  print("witness64_d3d11.globals = "+basePointer.ToString("X"));
-
 
   // player_is_inside_movement_hint_marker()
   ptr = scanner.Scan(new SigScanTarget(4, // Targeting byte 4
