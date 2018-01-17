@@ -80,7 +80,7 @@ startup {
   settings.Add("Split when completing normal levels via secret exit", false);
   settings.Add("Override first text component with a Death Counter", false);
   // For IL runs
-  settings.Add("Start when entering a chapter", false);
+  settings.Add("Start when entering a chapter instead of selecting a loadout", false);
   settings.Add("Reset when exiting a chapter", false);
 }
 
@@ -88,6 +88,7 @@ init {
   vars.deathCount = current.deathCount;
 
   vars.updateText = false;
+  vars.tcs = null;
   if (settings["Override first text component with a Death Counter"]) {
     foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
       if (component.GetType().Name == "TextComponent") {
@@ -102,28 +103,29 @@ init {
 }
 
 update {
-  if (vars.updateText || old.deathCount != current.deathCount) {
+  if (vars.tcs != null && (vars.updateText || old.deathCount != current.deathCount)) {
     vars.tcs.Text1 = "Death Count:";
     vars.tcs.Text2 = (current.deathCount - vars.deathCount).ToString();
   }
 }
 
 start {
-  // Start condition 1 (always active):
-  // Selected a loadout (0 -> non-0) while the game is not active
-  if (old.loadout == 0 && current.loadout > 0) {
-    vars.deathCount = current.deathCount;
-    print("Started because the player confirmed an initial loadout");
-    return true;
-  }
-  // Start condition 2 (per setting):
-  // Entered a chapter from the lobbby
-  if (settings["Start when entering a chapter"]) {
-    if (current.inLobby != 0) {
-      if (old.animation != current.animation && current.animation == 93) {
-        print("Started because the player entered a chapter");
-        vars.deathCount = current.deathCount;
-        return true;
+  if (!settings["Start when entering a chapter instead of selecting a loadout"]) {
+    // Selected a loadout (0 -> non-0) while the game is not active
+    if (old.loadout == 0 && current.loadout > 0) {
+      vars.deathCount = current.deathCount;
+      print("Started because the player confirmed an initial loadout");
+      return true;
+    }
+  } else {
+    // Entered a chapter from the lobbby
+    if (settings["Start when entering a chapter"]) {
+      if (current.inLobby != 0) {
+        if (old.animation != current.animation && current.animation == 93) {
+          print("Started because the player entered a chapter");
+          vars.deathCount = current.deathCount;
+          return true;
+        }
       }
     }
   }
