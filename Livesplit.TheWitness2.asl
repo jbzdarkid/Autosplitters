@@ -1,11 +1,8 @@
 state("witness64_d3d11") {}
-// TODO: Split for floor 1 finish
-// TODO: Future investigation into do_success_side_effects
+// TODO: "Split on lasers" should actually split on lasers
+
 // TODO: Entity_Machine_Panel::init_pattern_data_lotus
-// TODO: Random_Generator::get
-// TODO: Challenge start / cinema initial solve return 3?
-// TODO: Load EP count on run start / init
-// TODO: Don't start after a certain time
+// TODO: globals, 18, BFF*8, 100/108, 0 (text) -> triple which is valid
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -52,13 +49,18 @@ startup {
     0x01D40, // Blue
   };
 
+  vars.multipanel = new List<int>{
+    0x09FCD, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2, 0x09FD3
+  };
+
   // 11 lasers which unlock the mountain-top box
   settings.Add("Split on lasers", true);
   vars.lasers = new List<int>{
     0x032F6, // Town
     0x03609, // Desert
     0x0360E, // Symmetry
-    0x0360F, // Keep
+    0x0360F, // Keep Front
+    0x03318, // Keep Rear
     0x03613, // Quarry
     0x03614, // Treehouse
     0x03616, // Swamp
@@ -68,12 +70,16 @@ startup {
     0x19651, // Shadows
   };
   
-  // One-off panels (usually to accompany 11 lasers splits)
+  // One-off splits (usually to accompany 11 lasers splits)
   settings.Add("Split on tutorial door", true);
   settings.Add("Split when starting the boat", false);
   settings.Add("Split on greenhouse elevator", false);
+  settings.Add("Split when completing the first mountain floor", false);
   settings.Add("Split on mountain elevator", false);
   settings.Add("Split on final elevator", true);
+  settings.Add("Start/split on challenge start", false);
+  settings.Add("Reset on challenge stop", false);
+  settings.Add("Split on challenge end", false);
 }
 
 init {
@@ -83,8 +89,29 @@ init {
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
+  // get_active_panel()
+  IntPtr ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
+    "48 8B 05 ????????", // mov rax, [witness64_d3d11.exe + offset]
+    "33 C9",             // xor ecx, ecx
+    "48 85 C0",          // test rax, rax
+    "74 06"              // je 6
+  ));
+  if (ptr == IntPtr.Zero) {
+    print("Could not find current puzzle!");
+    return false;
+  }
+  int relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.puzzle = new MemoryWatcher<int>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr),
+    game.ReadValue<byte>(ptr+14),
+    game.ReadValue<int>(ptr+22)
+  ));
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
+  int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
+  print("witness64_d3d11.globals = "+basePointer.ToString("X"));
+
   // judge_panel()
-  var ptr = scanner.Scan(new SigScanTarget(0,
+  ptr = scanner.Scan(new SigScanTarget(0,
     "C7 83 ???????? 01000000", // mov [rbx+offset], 1
     "48 0F45 C8"               // cmovne rcx, rax
   ));
@@ -106,28 +133,29 @@ init {
     return false;
   }
   int obeliskOffset = game.ReadValue<int>(ptr);
-  print("Solved offset: "+vars.solvedOffset.ToString("X")+" | Completed offset: "+vars.completedOffset.ToString("X")+" | Obelisk offset: "+obeliskOffset.ToString("X")/*+" | Panel name offset: "+vars.panelNameOffset.ToString("X")+" | EP name offset: "+vars.epNameOffset.ToString("X")*/);
-  
-  // get_active_panel()
-  ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
-    "48 8B 05 ????????", // mov rax, [witness64_d3d11.exe + offset]
-    "33 C9",             // xor ecx, ecx
-    "48 85 C0",          // test rax, rax
-    "74 06"              // je 6
+
+  // Entity_Door::update_position_and_orientation()
+  ptr = scanner.Scan(new SigScanTarget(4,
+    "F3 0F11 89 ????????", // mov [rcx + offset], xmm1
+    "F3 0F59 89 ????????"  // mulss xmm1, [rcx + ??]
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find current puzzle!");
+    print("Could not find door offset!");
     return false;
   }
-  int relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-  vars.puzzle = new MemoryWatcher<int>(new DeepPointer(
-    relativePosition + game.ReadValue<int>(ptr),
-    game.ReadValue<byte>(ptr+14),
-    game.ReadValue<int>(ptr+22)
+  int doorOffset = game.ReadValue<int>(ptr);
+  vars.mountainDoor = new MemoryWatcher<float>(new DeepPointer(
+    basePointer, 0x18, 0x9E54*8, doorOffset
   ));
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
-  int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
-  print("witness64_d3d11.globals = "+basePointer.ToString("X"));
+
+  print(
+    "Solved offset: "+vars.solvedOffset.ToString("X")
+    + " | Completed offset: "+vars.completedOffset.ToString("X")
+    + " | Obelisk offset: "+obeliskOffset.ToString("X")
+    + " | Door offset: "+doorOffset.ToString("X")
+    // + " | Panel name offset: "+vars.panelNameOffset.ToString("X")
+    // + " | EP name offset: "+vars.epNameOffset.ToString("X")
+  );
 
   // player_is_inside_movement_hint_marker()
   ptr = scanner.Scan(new SigScanTarget(4, // Targeting byte 4
@@ -174,28 +202,60 @@ init {
     relativePosition + game.ReadValue<int>(ptr)
   ));
   
+  // Entity_Record_Player::power_on()
+  ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
+    "C7 83 ???????? 00000000", // mov [rbx+??], 0
+    "C7 83 ???????? 0000803F", // mov [rbx+offset], 1.0
+    "48 83 C4 60"              // add rsp, 60
+  ));
+  if (ptr == IntPtr.Zero) {
+    print("Could not find challenge start!");
+    return false;
+  }
+  int recordPowerOffset = game.ReadValue<int>(ptr);
+  if (recordPowerOffset == 0xC8) { // new version
+    vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
+      basePointer, 0x188, 0x2B8, 0x0, 0xC8
+    ));
+    vars.movie = new MemoryWatcher<int>(new DeepPointer(
+      basePointer, 0x188, 0x358, 0x0, 0xCC
+    ));
+  } else { // old version
+    vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
+      basePointer, 0x188, 0x2A8, 0x0, 0xD0
+    ));
+    vars.movie = new MemoryWatcher<int>(new DeepPointer(
+      basePointer, 0x188, 0x338, 0x0, 0xD4
+    ));
+  }
+  
   // Entity_Audio_Recording::play_or_stop()
   // 83 BB ???????? 00 48 8B CB 74 0A
   
   // do_focus_mode_left_mouse_press()
   // 8B 05 ???????? 85 C0 74 5B
   
-  
   Func<int, int, DeepPointer> createPointer = (int puzzle, int offset) => {
     return new DeepPointer(basePointer, 0x18, (puzzle-1)*8, offset);
   };
+  // First panel in the game
+  int panelType = createPointer(0x65, 0x8).Deref<int>(game);
   vars.addPanel = (Action<int, int, int>)((int panel, int maxSolves, int offset) => {
     if (!vars.panels.ContainsKey(panel)) {
-      vars.panels[panel] = new Tuple<int, int, DeepPointer>(
-        0,         // Number of times solved
-        maxSolves, // Number of times to split
-        createPointer(panel, offset)
-      );
+      int type = createPointer(panel, 0x8).Deref<int>(game);
+      if (type == panelType) {
+        vars.panels[panel] = new Tuple<int, int, DeepPointer>(
+          0,         // Number of times solved
+          maxSolves, // Number of times to split
+          createPointer(panel, offset)
+        );
+      }
     }
   });
 
   vars.panels = new Dictionary<int, Tuple<int, int, DeepPointer>>();
   vars.keepWatchers = new MemoryWatcherList();
+  vars.multiWatchers = new MemoryWatcherList();
   vars.obeliskWatchers = new MemoryWatcherList();
 
   if (settings["Split on environmental patterns"]) {
@@ -206,6 +266,7 @@ init {
 
   vars.initPuzzles = (Action)(() => {
     vars.epCount = 0;
+    foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
     vars.panels.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
@@ -214,11 +275,14 @@ init {
         vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
       }
       vars.keepWatchers.UpdateAll(game);
+      foreach (var panel in vars.multipanel) {
+        vars.addPanel(panel, 0, vars.solvedOffset);
+        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
+      }
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
-      // Challenge start and Cinema input are special cases, they un-solve after you exit them, so to work around this I use the completed offset.
-      vars.addPanel(0x0A333, 9999, vars.solvedOffset); // Challenge Start
-      vars.addPanel(0x00816, 9999, vars.solvedOffset); // Cinema input panel
+      // Cinema input panel unsolves itself the first time
+      vars.addPanel(0x00816, 0, vars.solvedOffset);
     } else {
       // Individual panels use the completed offset, since they just need to be completed the first time you exit them
       if (settings["Split on lasers"]) {
@@ -241,190 +305,29 @@ init {
       if (settings["Split on final elevator"]) {
         vars.addPanel(0x3D9AA, 1, vars.completedOffset);
       }
+      if (settings["Split on challenge end"]) {
+        vars.addPanel(0x1C31A, 0, vars.solvedOffset); // Right pillar
+        vars.addPanel(0x1C31B, 0, vars.solvedOffset); // Left pillar
+      }
     }
   });
   vars.initPuzzles();
-  vars.ints = new int[1000];
 }
-/* Entity_Machine_Panel::Entity_Machine_Panel()
 
-// State values:
-// 0 - Unsolved
-// 1 - Solved correctly
-// 2 - Solved incorrecty
-// 3 - Exited
-// 4 - Negation pending
-// 5 - Incorrect meta floor
-
-0x000 long* vfTable = [Entity_Machine_Panel`vftable']
-  0x0C8 float
-  0x0E8 float
-  0x0F8 float
-  0x108 float
-  0x118 float
-  0x128 float
-  0x138 float
-  0x148 float
-  0x158 float
-  0x168 float
-  0x178 float
-  0x188 float
-  0x1A8 float
-  0x1B8 float
-  0x1C8 float
-  0x1D8 float
-  0x1E8 float
-  0x1F8 float
-  0x198 float
-  0x208 int
-  0x20C float
-  0x21C int = 2
-  0x220 long
-  0x228 ???
-  0x22C int
-  0x230 long
-  0x238 long
-  0x240 long
-  0x248 long
-  0x250 long
-  0x258 long
-  0x260 long
-  0x268 long
-  0x270 long
-  0x278 long
-  0x280 int
-  0x284 float
-  0x28C long
-  0x294 (float/double)
-  0x29C long
-  0x2A4 float
-  0x2A8 float
-  0x2AC float
-  0x2B4 long
-  0x2BC long
-  0x2C4 long
-  0x2CC long
-  0x2D4 long
-  0x2DC int
-  0x2E4 long
-  0x2EC long
-  0x2F4 long
-  0x2FC long
-  0x304 long
-  0x30C ???
-  0x310 int
-  0x314 float
-  0x318 float
-  0x320 long
-  0x328 long
-  0x330 long
-  0x340 float
-  0x344 float
-  0x34C int
-  0x350 double (???)
-  0x354 int
-  0x358 float
-  0x35C int
-  0x360 double (???)
-  0x364 int
-  0x368 int
-  0x36C int
-  0x370 int
-  0x374 int
-  0x378 int = 0xFFFFFFFF
-  0x380 int
-  0x384 int
-  0x388 long
-  0x390 int = 0x3DCCCCCD
-  0x398 int
-  0x39C int = 1
-  0x3A0 int = 1
-  0x3A4 float
-  0x3A8 double
-  0x3B0 long
-  0x3B8 long
-  0x3C0 float
-  0x3C8 long
-  0x3D0 long
-  0x3D8 long
-  0x3E0 long
-  0x3E8 int
-  0x3F0 long
-  0x3F8 long
-  0x400 int
-  0x408 long
-  0x410 long
-  0x418 long
-  0x420 long
-  0x428 long
-  0x430 long
-  0x438 long
-  0x440 long
-  0x448 long
-  0x450 long
-  0x458 long
-  0x460 long
-  0x468 int
-  0x470 long
-  0x478 int
-  0x480 long
-  0x488 int = 0xFFFFFFFF
-  0x490 long
-  0x498 long
-  0x4A0 int
-  0x4A4 ???
-  0x4A8 long
-  0x4B0 long
-  0x4B8 long
-  0x4C0 long
-  0x4C8 long
-  0x4D0 long
-  0x4D8 long
-  0x4E0 long
-  0x4E8 long
-  0x4F0 long
-  0x4F8 long
-  0x500 byte = 1
-  
-  
-  0x
-0x288 int state;
-  0x29C float
-0x2A0 int isCompleted;
-  0x2C0
-  0x310
-  0x318
-  0x310
-  0x320
-0x384 int texturesLoaded;
-  0x450 int flags; // of some kind
-
-  
-*/
 update {
   if (vars.panels == null) return false; // Init not yet done
-  //print(""+(new DeepPointer(0x5B28C0, 0x18, 0x1AA70, 0x384)).Deref<int>(game));
-/*
-  string message = "";
-  for (int i=0; i<vars.ints.Length; i+=4) {
-    var ignored = new List<int>{0x8,0x10,0x14,0x18,0x20,0x28,0x2C,0x30,0x38,0x3C,0x48,0x54,0x70,0xA4,0xA8,0xAC,0xB4,0xB8,0xBC,0xCC,0xD4,0xE4,0xEC,0xF0,0xF4,0xF8,0xFC,0x108,0x118,0x120,0x128,0x12C,0x15C,0x178,0x180,0x194,0x198,0x1A0,0x1B0,0x1B4,0x1D0,0x1D4,0x1E8,0x1F0,0x1F4,0x204,0x278,0x2EC,0x30C,0x314,0x318,0x340,0x344,0x360,0x384,0x390,0x39C,0x3A0,0x3A4,0x3BC,0x3C0,0x3D4, 0x21C, 0x100, 0x4, 0xD8, 0x2E8, 0x3B0, 0x20C, 0x3D8, 0x218, 0x3B8, 0x50, 0x150, 0x190, 0x3E0, 0x1A8, 0x1C8, 0xE8, 0x358, 0x294, 0x148, 0x1A4, 0xD0, 0x378, 0x184};
-    if (ignored.Contains(i)) continue;
-    int newInt = (new DeepPointer(0x5B28C0, 0x18, 0x1AA70, i)).Deref<int>(game);
-    if (vars.ints[i] != newInt) {
-      //print(i + ": " + vars.ints[i] + " -> " + newInt);
-      message += i.ToString("X")+" ";
-      vars.ints[i] = newInt;
-    }
-  }
-  if (message != "") print(message);
-  */
   
   // Don't run if the game is loading / paused
   vars.time.Update(game);
   if (vars.time.Current <= vars.time.Old) return false;
   vars.puzzle.Update(game);
   vars.gameFrames.Update(game);
+  // Separated out to handle manual resets
+  if (vars.gameFrames.Current == 0) vars.startTime = 0.0;
   vars.playerMoving.Update(game);
+  vars.challengeActive.Update(game);
+  vars.mountainDoor.Update(game);
+  vars.movie.Update(game);
   vars.keepWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
 }
@@ -438,18 +341,30 @@ gameTime {
 }
 
 reset {
-  if (vars.gameFrames.Current == 0) {
-    vars.startTime = 0.0;
+  if (vars.gameFrames.Old != 0 && vars.gameFrames.Current == 0) {
     return true;
+  }
+  if (settings["Reset on challenge stop"]) {
+    if (vars.challengeActive.Old == 1.0 && vars.challengeActive.Current == 0.0) {
+      return true;
+    }
   }
 }
 
 start {
-  // FIXME: Should start only once?
-  if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
-    vars.startTime = vars.time.Current;
-    vars.initPuzzles();
-    return true;
+  if (vars.startTime == 0.0) {
+    if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
+      vars.startTime = vars.time.Current;
+      vars.initPuzzles();
+      return true;
+    }
+  }
+  if (settings["Start/split on challenge start"]) {
+    if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+      vars.startTime = vars.time.Current;
+      vars.initPuzzles();
+      return true;
+    }
   }
 }
 
@@ -465,6 +380,10 @@ split {
   }
   if (vars.activePanel != 0) {
     int panel = vars.activePanel;
+    if (!vars.panels.ContainsKey(panel)) {
+      vars.activePanel = 0;
+      return false;
+    }
     var puzzleData = vars.panels[panel];
     int state = puzzleData.Item3.Deref<int>(game);
     // Valid states:
@@ -482,13 +401,68 @@ split {
       );
       print("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
       vars.activePanel = 0;
+      if (settings["Split on challenge end"]) {
+        if (vars.panels[0x1C31A].Item1 == 1 && vars.panels[0x1C31B].Item1 == 1) {
+          return true;
+        }
+      }
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
     } else if (state != 0) {
-      // TODO: EPs pass through this train too. Figure out if the puzzle is an EP maybe
       print("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
+    }
+  }
+  if (settings["Split on all panels (solving and non-solving)"]) {
+    // Challenge starting panel unsolves itself
+    if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+      print("Started the challenge");
+      return true;
+    }
+    if (vars.movie.Old != vars.movie.Current) {
+      print(vars.movie.Old+" "+vars.movie.Current);
+    }
+    // Cinema starting panel unsolves itself
+    if (vars.movie.Old != vars.movie.Current) {
+      if (vars.movie.Old == 2070 || vars.movie.Current == 2070) {
+        return false; // Initialization
+      }
+      if (vars.movie.Current == 0) {
+        return false; // Movie ending
+      }
+      print("Started movie 0x"+vars.movie.Current.ToString("X"));
+      return true;
+    }
+    // Keep panels don't trigger nicely
+    for (int i=0; i<vars.keepWatchers.Count; i++) {
+      var panel = vars.keepWatchers[i];
+      if (panel.Old == 0 && panel.Current == 1) {
+        string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
+        print(color + " keep panel has been solved");
+        return true;
+      }
+    }
+    // Avoid duplication for multipanel
+    for (int i=0; i<vars.multiWatchers.Count; i++) {
+      var panel = vars.multiWatchers[i];
+      if (panel.Old == 0 && panel.Current == 1) {
+        print("Completed multipanel "+i);
+        return true;
+      }
+    }
+  }
+  if (settings["Split when completing the first mountain floor"]) {
+    // Increases gradually from 0 to 1
+    if (vars.mountainDoor.Old == 0.0 && vars.mountainDoor.Current > 0.0) {
+      print("Mountain floor 1 door started opening");
+      //return true;
+    }
+  }
+  if (settings["Start/split on challenge start"]) {
+    if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+      print("Started the challenge");
+      return true;
     }
   }
   if (settings["Split on environmental patterns"]) {
@@ -498,16 +472,6 @@ split {
       print("Solved EP #" + epCount);
       vars.epCount = epCount;
       return true;
-    }
-  }
-  if (settings["Split on all panels (solving and non-solving)"]) {
-    for (int i=0; i<4; i++) {
-      var panel = vars.keepWatchers[i];
-      if (panel.Old == 0 && panel.Current == 1) {
-        string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
-        print(color + " keep panel has been solved");
-        return true;
-      }
     }
   }
 }
