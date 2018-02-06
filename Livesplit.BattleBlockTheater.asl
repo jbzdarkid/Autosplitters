@@ -52,7 +52,7 @@ state("BattleBlockTheater") {
   int deathCount  : 0x30E7C4, 0x4B4;
   byte level      : 0x30E7D8, 0x8;
   int inLobby     : 0x30E7D8, 0x28C; // TODO: Improve? I tried.
-  bool gameActive : 0x30E7D8, 0x278;
+  byte gameActive : 0x3131A5;
   int loadout     : 0x30ACB0, 0x64, 0x1C0; // TODO: Improve?
   byte animation  : 0x315420, 0x8B;
 
@@ -119,20 +119,18 @@ start {
     }
   } else {
     // Entered a chapter from the lobbby
-    if (settings["Start when entering a chapter"]) {
-      if (current.inLobby != 0) {
-        if (old.animation != current.animation && current.animation == 93) {
-          print("Started because the player entered a chapter");
-          vars.deathCount = current.deathCount;
-          return true;
-        }
+    if (current.inLobby != 0) {
+      if (old.animation != current.animation && current.animation == 93) {
+        print("Started because the player entered a chapter");
+        vars.deathCount = current.deathCount;
+        return true;
       }
     }
   }
 }
 
 reset {
-  if (old.gameActive && !current.gameActive) {
+  if (old.gameActive == 0 && current.gameActive == 1) {
     print("Reset because the player returned to the main menu");
     return true;
   }
@@ -146,7 +144,7 @@ reset {
 
 split {
   // Don't try to split if the game hasn't loaded in
-  if (!current.gameActive) return false;
+  if (current.gameActive == 0) return false;
   if (current.inLobby != 0) {
     if (old.animation != current.animation && current.animation == 4) {
       print("Reached the boat (end of game)");

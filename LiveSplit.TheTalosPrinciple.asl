@@ -2,6 +2,8 @@ state("Talos") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // https://www.twitch.tv/videos/217795611?t=01h20m20s
 // TODO: "Split when returning to nexus" triggered in A5? https://www.twitch.tv/videos/217795611?t=01h24m27s
+// TODO: Extra worlds splits -> Should have a subcategory for these
+// TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
 
 startup {
   // Commonly used, defaults to true
@@ -26,6 +28,9 @@ startup {
   settings.Add("Don't split on tetromino collection in B6", false);
   settings.Add("Don't split on tetromino collection in B8", false);
   settings.Add("Start the run in any world", false);
+  settings.Add("(Custom/DLC) Split when solving any arranger", false);
+  settings.Add("(Custom/DLC) Split on any world transition", false);
+
 }
 
 init {
@@ -193,6 +198,9 @@ split {
     if (mapName == "Content/Talos/Levels/Cloud_3_08.wld") {
       vars.cStarSigils = 0;
     }
+    if (settings["(Custom/DLC) Split on any world transition"]) {
+      return true;
+    }
   }
   if (vars.line.StartsWith("Picked:")) { // Sigil/Robot and star collection
     var sigil = vars.line.Substring(8);
@@ -249,8 +257,8 @@ split {
     if (puzzle.StartsWith("Mechanic")) {
       return settings["Split on item unlocks"];
     }
-    if (puzzle.StartsWith("Door")) {
-      return settings["Split on tetromino world doors"];
+    if (puzzle.StartsWith("Door") && settings["Split on tetromino world doors"]) {
+      return true; // Working around a custom arranger called 'Door_Dome'
     }
     if (puzzle.StartsWith("SecretDoor")) {
       return settings["Split on tetromino star doors"];
@@ -259,12 +267,14 @@ split {
       return settings["Split on tetromino tower doors"];
     }
     if (puzzle.StartsWith("DLC_01_Secret")) {
-      return settings["(DLC) Split on puzzle doors"];
+      return settings["(Custom/DLC) Split when solving any arranger"];
     }
     if (puzzle.StartsWith("DLC_01_Hub")) {
       vars.adminEnding = true; // Admin puzzle door solved, so the Admin is saved.
-      return settings["(DLC) Split on puzzle doors"];
+      return settings["(Custom/DLC) Split when solving any arranger"];
     }
+    // If it's not one of the main game/DLC strings, then it must be a custom campaign
+    return settings["(Custom/DLC) Split when solving any arranger"];
   }
 
   // Miscellaneous
