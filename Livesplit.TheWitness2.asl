@@ -267,6 +267,7 @@ init {
   vars.initPuzzles = (Action)(() => {
     vars.epCount = 0;
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
+    print("Loaded with EP count: "+vars.epCount);
     vars.panels.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
@@ -459,8 +460,10 @@ split {
       //return true;
     }
   }
-  if (settings["Start/split on challenge start"]) {
-    if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+  if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+    vars.panels[0x1C31A].Item1 = 0;
+    vars.panels[0x1C31B].Item1 = 0;
+    if (settings["Start/split on challenge start"]) {
       print("Started the challenge");
       return true;
     }
