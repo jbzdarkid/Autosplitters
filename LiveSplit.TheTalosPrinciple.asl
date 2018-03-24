@@ -1,9 +1,9 @@
 state("Talos") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
-// https://www.twitch.tv/videos/217795611?t=01h20m20s
-// TODO: "Split when returning to nexus" triggered in A5? https://www.twitch.tv/videos/217795611?t=01h24m27s
-// TODO: Extra worlds splits -> Should have a subcategory for these
+// TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
 // TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
+// TODO: Randomizer doesn't work (start)
+// TODO: Load removal doesn't work on moddable
 
 startup {
   // Commonly used, defaults to true
@@ -23,14 +23,19 @@ startup {
   settings.Add("Split on tetromino star doors", false); // (mostly) unused by the community
   settings.Add("Split on Community% ending", false); // Community% completion -- mostly unused
   settings.Add("Split when exiting Floor 5", false);
-  settings.Add("Don't split on tetromino collection in A6", false);
-  settings.Add("Don't split on tetromino collection in B4", false);
-  settings.Add("Don't split on tetromino collection in B6", false);
-  settings.Add("Don't split on tetromino collection in B8", false);
   settings.Add("Start the run in any world", false);
   settings.Add("(Custom/DLC) Split when solving any arranger", false);
   settings.Add("(Custom/DLC) Split on any world transition", false);
 
+  settings.Add("worldsplits", true, "Don't split on tetromino collections in these worlds:");
+  settings.CurrentDefaultParent = "worldsplits";
+  settings.Add("worldsplits-A4", false, "A4");
+  settings.Add("worldsplits-A6", false, "A6");
+  settings.Add("worldsplits-B1", false, "B1");
+  settings.Add("worldsplits-B3", false, "B3");
+  settings.Add("worldsplits-B4", false, "B4");
+  settings.Add("worldsplits-B6", false, "B6");
+  settings.Add("worldsplits-B8", false, "B8");
 }
 
 init {
@@ -151,7 +156,7 @@ start {
   }
   
   if (settings["Start the run in any world"] &&
-    vars.line.StartsWith("Started simulation on '")) {
+    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("menu")) {
     print("Started a new run from a non-normal starting world.");
     vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
     vars.lastSigil = "";
