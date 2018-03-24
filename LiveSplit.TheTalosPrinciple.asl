@@ -196,11 +196,11 @@ split {
     print("Changed worlds from "+vars.currentWorld+" to "+mapName);
     vars.currentWorld = mapName;
     if (settings["Split on return to Nexus or DLC Hub"] &&
-      (mapName == "Content/Talos/Levels/Nexus.wld" ||
-       mapName == "Content/Talos/Levels/DLC_01_Hub.wld")) {
+      (mapName.EndsWith("Nexus.wld") ||
+       mapName.EndsWith("DLC_01_Hub.wld"))) {
       return true;
     }
-    if (mapName == "Content/Talos/Levels/Cloud_3_08.wld") {
+    if (mapName.EndsWith("Cloud_3_08.wld")) {
       vars.cStarSigils = 0;
     }
     if (settings["(Custom/DLC) Split on any world transition"]) {
@@ -215,7 +215,7 @@ split {
       vars.lastSigil = sigil;
     }
     print("Collected sigil " + sigil + " in world " + vars.currentWorld);
-    if (vars.currentWorld == "Content/Talos/Levels/Cloud_3_08.wld") {
+    if (vars.currentWorld.EndsWith("Cloud_3_08.wld")) {
       vars.cStarSigils++;
       print("Collected " + vars.cStarSigils + " in C*");
       if (vars.cStarSigils == 3 && settings["Split on Community% ending"]) {
@@ -226,28 +226,36 @@ split {
       if (settings["Split on star collection"]) {
         return true;
       } else {
-        if (vars.currentWorld == "Content/Talos/Levels/Nexus.wld") {
+        if (vars.currentWorld.EndsWith("Nexus.wld")) {
           return settings["Split on star collection in the Nexus"];
         }
       }
     } else {
-      if (settings["Don't split on tetromino collection in A6"] &&
-        vars.currentWorld == "Content/Talos/Levels/Cloud_1_06.wld") {
+      if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
+        print("Not splitting for a collection in A4, per setting.");
+        return false;
+      }
+      if (settings["worldsplits-A6"] && vars.currentWorld.EndsWith("Cloud_1_06.wld")) {
         print("Not splitting for a collection in A6, per setting.");
         return false;
       }
-      if (settings["Don't split on tetromino collection in B4"] &&
-        vars.currentWorld == "Content/Talos/Levels/Cloud_2_04.wld") {
+      if (settings["worldsplits-B1"] && vars.currentWorld.EndsWith("Cloud_2_01.wld")) {
+        print("Not splitting for a collection in B1, per setting.");
+        return false;
+      }
+      if (settings["worldsplits-B3"] && vars.currentWorld.EndsWith("Cloud_2_03.wld")) {
+        print("Not splitting for a collection in B3, per setting.");
+        return false;
+      }
+      if (settings["worldsplits-B4"] && vars.currentWorld.EndsWith("Cloud_2_04.wld")) {
         print("Not splitting for a collection in B4, per setting.");
         return false;
       }
-      if (settings["Don't split on tetromino collection in B6"] &&
-        vars.currentWorld == "Content/Talos/Levels/Cloud_2_06.wld") {
+      if (settings["worldsplits-B6"] && vars.currentWorld.EndsWith("Cloud_2_06.wld")) {
         print("Not splitting for a collection in B6, per setting.");
         return false;
       }
-      if (settings["Don't split on tetromino collection in B8"] &&
-        vars.currentWorld == "Content/Talos/Levels/Cloud_2_08.wld") {
+      if (settings["worldsplits-B8"] && vars.currentWorld.EndsWith("Cloud_2_08.wld")) {
         print("Not splitting for a collection in B8, per setting.");
         return false;
       }
@@ -287,13 +295,13 @@ split {
     print("User exited terminal");
     return settings["Split on exiting any terminal"];
   }
-  if (vars.currentWorld == "Content/Talos/Levels/Islands_03.wld") {
+  if (vars.currentWorld.EndsWith("Islands_03.wld")) {
     if (vars.line.StartsWith("USER:")) { // Line differs in languages, not the prefix
       print("Game completed via Messenger ending.");
       return true;
     }
   }
-  if (vars.currentWorld == "Content/Talos/Levels/Nexus.wld") {
+  if (vars.currentWorld.EndsWith("Nexus.wld")) {
     if (vars.line == "Elohim speaks: Elohim-063_Nexus_Ascent_01") {
       print("User exits floor 5 and starts ascending the tower");
       return settings["Split when exiting Floor 5"];
@@ -307,7 +315,7 @@ split {
       return true;
     }
   }
-  if (vars.currentWorld == "Content/Talos/Levels/DLC_01_Hub.wld") {
+  if (vars.currentWorld.EndsWith("DLC_01_Hub.wld")) {
     if (vars.line == "Save Talos Progress: entered terminal") {
       vars.lastLines = 0;
     }
