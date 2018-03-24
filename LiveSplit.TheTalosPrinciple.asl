@@ -2,7 +2,6 @@ state("Talos") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
 // TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
-// TODO: Randomizer doesn't work (start)
 // TODO: Load removal doesn't work on moddable
 
 startup {
@@ -143,8 +142,7 @@ start {
     return false;
   }
   // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
-  if (vars.line.StartsWith("Started simulation on 'Content/Talos/Levels/Cloud_1_01.wld'") ||
-    vars.line.StartsWith("Started simulation on 'Content/Talos/Levels/DLC_01_Intro.wld'")) {
+  if (vars.line.StartsWith("Started simulation on") && (vars.line.Contains("Cloud_1_01.wld") || vars.line.Contains("DLC_01_Intro.wld'"))) {
     print("Started a new run from a normal starting world.");
     vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
     vars.lastSigil = "";
@@ -170,7 +168,7 @@ start {
 
 reset {
   if (vars.line == "Saving talos progress upon game stop.") {
-    print("Stopped run because the game was exited.");
+    print("Stopped run because the game was stopped.");
     return true; // Unique line printed only when you stop the game
   }
 }
