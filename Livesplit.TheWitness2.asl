@@ -148,11 +148,43 @@ init {
     basePointer, 0x18, 0x9E54*8, doorOffset
   ));
 
+  // Entity_Record_Player::power_on()
+  ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
+    "C7 83 ???????? 00000000", // mov [rbx+??], 0
+    "C7 83 ???????? 0000803F", // mov [rbx+offset], 1.0
+    "48 83 C4 60"              // add rsp, 60
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find challenge start!");
+  }
+  int recordPowerOffset = game.ReadValue<int>(ptr);
+  vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
+    basePointer, 0x18, 0xBFF*8, recordPowerOffset
+  ));
+
+  // get_active_video_player_panel
+  ptr = scanner.Scan(new SigScanTarget(4, // Targeting byte 4
+    "5B",             // pop rbx
+    "C3",             // ret
+    "8B 81 ????????", // mov eax, [rcx+offset]
+    "85 C0",          // test eax, eax
+    "74 2A"           // je ??
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find active movie!");
+  }
+  int activeMovieOffset = game.ReadValue<int>(ptr);
+  vars.movie = new MemoryWatcher<int>(new DeepPointer(
+    basePointer, 0x18, 0x3B6*8, activeMovieOffset
+  ));
+  
   print(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
     + " | Door offset: "+doorOffset.ToString("X")
+    + " | Record Power offset: "+recordPowerOffset.ToString("X")
+    + " | Active Movie offset: "+activeMovieOffset.ToString("X")
     // + " | Panel name offset: "+vars.panelNameOffset.ToString("X")
     // + " | EP name offset: "+vars.epNameOffset.ToString("X")
   );
@@ -202,32 +234,20 @@ init {
     relativePosition + game.ReadValue<int>(ptr)
   ));
   
-  // Entity_Record_Player::power_on()
-  ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
-    "C7 83 ???????? 00000000", // mov [rbx+??], 0
-    "C7 83 ???????? 0000803F", // mov [rbx+offset], 1.0
-    "48 83 C4 60"              // add rsp, 60
+  // end2_eyelid_trigger()
+  ptr = scanner.Scan(new SigScanTarget(8, // Targeting byte 8
+    "48 83 EC ??",         // sub rsp, 28
+    "F2 0F10 05 ????????", // mov xmm0, [end2_eyelid_start_time]
+    "0F57 C9",             // xorps xmm1, xmm1
+    "89 0D ????????"       // mov [end2_eyelid_box_id], ecx
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find challenge start!");
-    return false;
+    throw new Exception("Could not find eyelid_start_time!");
   }
-  int recordPowerOffset = game.ReadValue<int>(ptr);
-  if (recordPowerOffset == 0xC8) { // new version
-    vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
-      basePointer, 0x188, 0x2B8, 0x0, 0xC8
-    ));
-    vars.movie = new MemoryWatcher<int>(new DeepPointer(
-      basePointer, 0x188, 0x358, 0x0, 0xCC
-    ));
-  } else { // old version
-    vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
-      basePointer, 0x188, 0x2A8, 0x0, 0xD0
-    ));
-    vars.movie = new MemoryWatcher<int>(new DeepPointer(
-      basePointer, 0x188, 0x338, 0x0, 0xD4
-    ));
-  }
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.eyelidStart = new MemoryWatcher<double>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr)
+  ));
   
   // Entity_Audio_Recording::play_or_stop()
   // 83 BB ???????? 00 48 8B CB 74 0A
@@ -240,6 +260,10 @@ init {
   };
   // First panel in the game
   int panelType = createPointer(0x65, 0x8).Deref<int>(game);
+  if (panelType == 0) {
+    throw new Exception("Couldn't find panel type!");
+  }
+  print("Panel type: 0x"+panelType.ToString("X"));
   vars.addPanel = (Action<int, int, int>)((int panel, int maxSolves, int offset) => {
     if (!vars.panels.ContainsKey(panel)) {
       int type = createPointer(panel, 0x8).Deref<int>(game);
@@ -306,10 +330,10 @@ init {
       if (settings["Split on final elevator"]) {
         vars.addPanel(0x3D9AA, 1, vars.completedOffset);
       }
-      if (settings["Split on challenge end"]) {
-        vars.addPanel(0x1C31A, 0, vars.solvedOffset); // Right pillar
-        vars.addPanel(0x1C31B, 0, vars.solvedOffset); // Left pillar
-      }
+    }
+    if (settings["Split on challenge end"]) {
+      vars.addPanel(0x1C31A, 0, vars.solvedOffset); // Right pillar
+      vars.addPanel(0x1C31B, 0, vars.solvedOffset); // Left pillar
     }
   });
   vars.initPuzzles();
@@ -329,6 +353,7 @@ update {
   vars.challengeActive.Update(game);
   vars.mountainDoor.Update(game);
   vars.movie.Update(game);
+  vars.eyelidStart.Update(game);
   vars.keepWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
 }
@@ -457,12 +482,22 @@ split {
     // Increases gradually from 0 to 1
     if (vars.mountainDoor.Old == 0.0 && vars.mountainDoor.Current > 0.0) {
       print("Mountain floor 1 door started opening");
-      //return true;
+      return true;
     }
   }
   if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-    vars.panels[0x1C31A].Item1 = 0;
-    vars.panels[0x1C31B].Item1 = 0;
+    if (settings["Split on challenge end"]) {
+      vars.panels[0x1C31A] = new Tuple<int, int, DeepPointer>(
+        0,
+        vars.panels[0x1C31A].Item2,
+        vars.panels[0x1C31A].Item3
+      );
+      vars.panels[0x1C31B] = new Tuple<int, int, DeepPointer>(
+        0,
+        vars.panels[0x1C31B].Item2,
+        vars.panels[0x1C31B].Item3
+      );
+    }
     if (settings["Start/split on challenge start"]) {
       print("Started the challenge");
       return true;
@@ -474,6 +509,11 @@ split {
     if (epCount > vars.epCount) {
       print("Solved EP #" + epCount);
       vars.epCount = epCount;
+      return true;
+    }
+  }
+  if (settings["Split on easter egg ending"]) {
+    if (vars.eyelidStart.Old == -1 && vars.eyelidStart.Current > 0) {
       return true;
     }
   }
