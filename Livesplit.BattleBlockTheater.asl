@@ -45,6 +45,7 @@
 // 107: Crying
 // 108: Cutscene fadeout?
 // 117: Loading & in cage
+// 126: Hat dance
 // 127: Level loading?
 // 128: Hatty cutscene
 
@@ -146,7 +147,7 @@ split {
   // Don't try to split if the game hasn't loaded in
   if (current.gameActive == 0) return false;
   if (current.inLobby != 0) {
-    if (old.animation != current.animation && current.animation == 4) {
+    if (old.animation != current.animation && (current.animation == 4 || current.anmiation == 126)) {
       print("Reached the boat (end of game)");
       return true;
     }
@@ -155,7 +156,7 @@ split {
   
   // Grabbed a key or used a teleporter -- only for finale levels because gem count
   // will mess up timings otherwise
-  if (old.animation != current.animation && current.animation == 4) {
+  if (old.animation != current.animation && (current.animation == 4 || current.anmiation == 126)) {
     // Levels 9-10 (10-11) are the two finales
     if (9 <= current.level && current.level <= 10) {
       print("Completed Finale-"+(current.level-8));
