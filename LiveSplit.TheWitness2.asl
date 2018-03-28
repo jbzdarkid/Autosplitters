@@ -1,5 +1,5 @@
 state("witness64_d3d11") {}
-// TODO: "Split on lasers" should actually split on lasers
+// TODO: "Split on lasers" should actually split on lasers, not laser panels
 
 // TODO: Entity_Machine_Panel::init_pattern_data_lotus
 // TODO: globals, 18, BFF*8, 100/108, 0 (text) -> triple which is valid
@@ -80,6 +80,7 @@ startup {
   settings.Add("Start/split on challenge start", false);
   settings.Add("Reset on challenge stop", false);
   settings.Add("Split on challenge end", false);
+  settings.Add("Split on easter egg ending", true);
 }
 
 init {
