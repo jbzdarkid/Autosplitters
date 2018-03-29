@@ -2,7 +2,6 @@ state("Talos") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
 // TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
-// TODO: Load removal doesn't work on moddable
 
 startup {
   // Commonly used, defaults to true
@@ -45,7 +44,7 @@ init {
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
   var ptr = IntPtr.Zero;
   vars.foundPointers = false;
-  
+
   if (game.Is64Bit()) {
     logPath = gameDir.TrimEnd("\\Bin\\x64".ToCharArray()) + "\\Log\\Talos.log";
 
@@ -79,12 +78,10 @@ init {
   } else { // game.Is64Bit() == false
     logPath = gameDir.TrimEnd("\\Bin".ToCharArray()) + "\\Log\\Talos.log";
 
-    ptr = scanner.Scan(new SigScanTarget(2, // Targeting byte 2
-      "83 3D ???????? 00", // cmp dword ptr [Talos.exe+target]
-      "53",                // push ebx
-      "56",                // push esi
-      "8B D9 C7",          // mov ebx, ecx
-      "45 FC 00000000"     // mov [ebp-04], 0
+    ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
+      "75 08",       // jne 8
+      "A1 ????????", // mov eax, [Talos.exe+target]
+      "5E"           // pop esi
     ));
     if (ptr == IntPtr.Zero) {
       print("Could not find x86 cheatFlags!");
