@@ -131,7 +131,7 @@ start {
 }
 
 reset {
-  if (old.gameActive == 0 && current.gameActive == 1) {
+  if (old.gameActive == 1 && current.gameActive == 0) {
     print("Reset because the player returned to the main menu");
     return true;
   }
@@ -147,7 +147,7 @@ split {
   // Don't try to split if the game hasn't loaded in
   if (current.gameActive == 0) return false;
   if (current.inLobby != 0) {
-    if (old.animation != current.animation && (current.animation == 4 || current.anmiation == 126)) {
+    if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
       print("Reached the boat (end of game)");
       return true;
     }
@@ -156,7 +156,7 @@ split {
   
   // Grabbed a key or used a teleporter -- only for finale levels because gem count
   // will mess up timings otherwise
-  if (old.animation != current.animation && (current.animation == 4 || current.anmiation == 126)) {
+  if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
     // Levels 9-10 (10-11) are the two finales
     if (9 <= current.level && current.level <= 10) {
       print("Completed Finale-"+(current.level-8));
