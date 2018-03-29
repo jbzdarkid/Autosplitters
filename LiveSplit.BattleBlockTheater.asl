@@ -119,7 +119,7 @@ start {
       return true;
     }
   } else {
-    // Entered a chapter from the lobbby
+    // Entered a chapter from the lobby
     if (current.inLobby != 0) {
       if (old.animation != current.animation && current.animation == 93) {
         print("Started because the player entered a chapter");
