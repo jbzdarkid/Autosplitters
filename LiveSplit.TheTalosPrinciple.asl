@@ -38,17 +38,20 @@ startup {
 }
 
 init {
-  var gameDir = Path.GetDirectoryName(modules.First().FileName);
-  var logPath = "";
-  
   var page = modules.First();
+  var gameDir = Path.GetDirectoryName(page.FileName);
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
   var ptr = IntPtr.Zero;
   vars.foundPointers = false;
 
+  string logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
   if (game.Is64Bit()) {
-    logPath = gameDir.TrimEnd("\\Bin\\x64".ToCharArray()) + "\\Log\\Talos.log";
-
+    logPath = logPath.TrimEnd("\\x64".ToCharArray());
+  }
+  logPath += "\\Log\\" + game.ProcessName + ".log";
+  print("Using log path: '" + logPath + "'");
+  
+  if (game.Is64Bit()) {
     ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
       "44 39 25 ????????", // cmp [Talos.exe+target], r12d
       "48 8B F9"           // mov rdi, rcx
@@ -77,8 +80,6 @@ init {
       0x10, 0x208 // Doesn't seem to change
     ));
   } else { // game.Is64Bit() == false
-    logPath = gameDir.TrimEnd("\\Bin".ToCharArray()) + "\\Log\\Talos.log";
-
     ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
       "75 08",       // jne 8
       "A1 ????????", // mov eax, [Talos.exe+target]
