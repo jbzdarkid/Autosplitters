@@ -153,7 +153,7 @@ start {
   }
   
   if (settings["Start the run in any world"] &&
-    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("menu")) {
+    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
     print("Started a new run from a non-normal starting world.");
     vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
     vars.lastSigil = "";
