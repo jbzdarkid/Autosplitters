@@ -154,8 +154,7 @@ split {
     return false; // Don't try to split otherwise, since we're not in a puzzle
   }
   
-  // Grabbed a key or used a teleporter -- only for finale levels because gem count
-  // will mess up timings otherwise
+  // Grabbed a key or used a teleporter -- only for finale levels because gem count will mess up timings otherwise
   if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
     // Levels 9-10 (10-11) are the two finales
     if (9 <= current.level && current.level <= 10) {
