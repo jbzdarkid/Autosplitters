@@ -44,9 +44,11 @@ init {
   var ptr = IntPtr.Zero;
   vars.foundPointers = false;
 
-  string logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
+  string logPath;
   if (game.Is64Bit()) {
-    logPath = logPath.TrimEnd("\\x64".ToCharArray());
+    logPath = gameDir.TrimEnd("\\Bin\\x64".ToCharArray());
+  } else {
+    logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
   }
   logPath += "\\Log\\" + game.ProcessName + ".log";
   print("Using log path: '" + logPath + "'");
