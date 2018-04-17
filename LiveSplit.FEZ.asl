@@ -2,6 +2,7 @@ state("FEZ") {}
 
 startup
 {
+  print("startup");
   settings.Add("anySplits", true, "Any% Splits");
 
   settings.CurrentDefaultParent = "anySplits";
@@ -112,6 +113,7 @@ startup
 
 init
 {
+  print("init");
   vars.scanPtr1 = IntPtr.Zero;
   vars.scanPtr2 = IntPtr.Zero;
   vars.speedrunBegan = new MemoryWatcher<bool>(IntPtr.Zero);
@@ -184,19 +186,37 @@ reset
 
 split
 {
-  if (vars.doorEnter.Changed && vars.doorEnter.Current == 1)
-    print("[Autosplitter] Door Transition: " + vars.currentLevel.Current + " -> " + vars.doorDest);
-  else if (vars.gomezAction.Changed && vars.gomezAction.Current == 0x60)
-    print("[Autosplitter] Warp Activated: @" + vars.currentLevel.Current);
-
-  return (settings["village"] && vars.doorEnter.Changed && vars.doorEnter.Current == 1 && vars.currentLevel.Current == "MEMORY_CORE" && vars.doorDest == "NATURE_HUB")
-       || (settings["bellTower"] && vars.doorEnter.Changed && vars.doorEnter.Current == 1 && vars.currentLevel.Current == "TWO_WALLS" && vars.doorDest == "NATURE_HUB")
-       || (settings["waterfall"] && vars.gomezAction.Changed && vars.gomezAction.Current == 0x60 && vars.currentLevel.Current == "CMY_B")
-       || (settings["arch"] && vars.gomezAction.Changed && vars.gomezAction.Current == 0x60 && vars.currentLevel.Current == "FIVE_TOWERS")
-       || (settings["tree"] && vars.doorEnter.Changed && vars.doorEnter.Current == 1 && vars.currentLevel.Current == "ZU_BRIDGE" && vars.doorDest == "ZU_CITY_RUINS")
-       || (settings["zu"] && vars.gomezAction.Changed && vars.gomezAction.Current == 0x60 && vars.currentLevel.Current == "VISITOR")
-       || (settings["lighthouse"] && vars.doorEnter.Changed && vars.doorEnter.Current == 1 && vars.currentLevel.Current == "PIVOT_WATERTOWER" && vars.doorDest == "MEMORY_CORE")
-       || (settings["ending32"] && vars.doorEnter.Current == 1 && vars.currentLevel.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current);
+  if (vars.doorEnter.Changed && vars.doorEnter.Current == 1) {
+    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDest.Current);
+    // if (settings["Split on all doors"]) return true;
+    if (vars.level.Current == "MEMORY_CORE" && vars.doorDest.Current == "NATURE_HUB") {
+      return settings["village"];
+    } else if (vars.level.Current == "TWO_WALLS" && vars.doorDest.Current == "NATURE_HUB") {
+      return settings["bellTower"];
+    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.doorDest.Current == "MEMORY_CORE") {
+      return settings["lighthouse"];
+    } else if (vars.level.Current == "ZU_BRIDGE" && vars.doorDest.Current == "ZU_CITY_RUINS") {
+      return settings["tree"];
+    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32") {
+      print("<177>");
+      return settings["ending32"];
+    }
+  }
+  if (vars.gomezAction.Changed && vars.gomezAction.Current == 0x60) {
+    // if (settings["Split on all warps"]) return true;
+    print("[Autosplitter] Warp Activated: @" + vars.level.Current);
+    if (vars.level.Current == "CMY_B") {
+      return settings["waterfall"];
+    } else if (vars.level.Current == "FIVE_TOWERS") {
+      return settings["arch"];
+    } else if (vars.level.Current == "VISITOR") {
+      return settings["zu"];
+    }
+  }
+  if (settings["ending32"] && vars.doorEnter.Current == 1 && vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current) {
+    print("<193>");
+    return true;
+  }
 }
 
 isLoading
