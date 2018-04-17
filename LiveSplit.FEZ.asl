@@ -21,14 +21,14 @@ startup {
   settings.SetToolTip("lighthouse", "Entering Memory Core from Pivot Watertower shortcut door");
   settings.Add("ending32", false, "Ending (32)");
   settings.SetToolTip("ending32", "Exiting Gomez's house after 32-cube ending");
-  
+
   vars.scanTarget1 = new SigScanTarget(0,
-    "33 C0",        //xor eax,eax
-    "F3 AB",        //repe stosd
+    "33 C0",                //xor eax,eax
+    "F3 AB",                //repe stosd
     "80 3D ?? ?? ?? ?? 00", //cmp byte ptr [XXXX57EC],00
-    "0F 84 ?? ?? 00 00",  //je FezGame.SpeedRun::Draw+339
-    "8B 0D ?? ?? ?? ??",  //mov ecx,[XXXX3514]
-    "38 01"         //cmp [ecx],al
+    "0F 84 ?? ?? 00 00",    //je FezGame.SpeedRun::Draw+339
+    "8B 0D ?? ?? ?? ??",    //mov ecx,[XXXX3514]
+    "38 01"                 //cmp [ecx],al
   );
   vars.scanTarget2 = new SigScanTarget(0, "49 00 43 00 6F 00 6D 00 70 00 61 00 72 00 61 00 62 00 6C 00 65"); //IComparable
 
@@ -129,9 +129,12 @@ init {
 
 update {
   vars.watchers.UpdateAll(game);
-  
-  if (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero)
-  {
+
+  print("<121>" + vars.timerStart.Old + " " + vars.timerStart.Current);
+  print("<122>" + vars.timerElapsed.Old + " " + vars.timerElapsed.Current);
+//  print("<119>" + vars.scanPtr1);
+//  print("<120>" + vars.scanPtr2);
+  if (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero) {
     print("[Autosplitter] Scanning memory");
 
     vars.ScanStable(game);
