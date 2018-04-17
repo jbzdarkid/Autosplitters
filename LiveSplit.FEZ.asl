@@ -63,11 +63,6 @@ startup {
     vars.timerAddr = new MemoryWatcher<int>((IntPtr)vars.timerPtr);
     vars.timerAddr.Update(proc);
 
-    vars.GetTimer();
-  });
-
-  vars.GetTimer = (Action)(() => 
-  {
     vars.timerElapsed = new MemoryWatcher<long>((IntPtr)vars.timerAddr.Current + 0x4);
     vars.timerStart = new MemoryWatcher<long>((IntPtr)vars.timerAddr.Current + 0xC);
     vars.timerEnabled = new MemoryWatcher<bool>((IntPtr)vars.timerAddr.Current + 0x14);
@@ -142,7 +137,7 @@ update {
   }
 
   if (vars.timerAddr.Changed) {
-    vars.GetTimer();
+    vars.ScanStable(game);
   }
 
   if (vars.playerManager.Changed) {
