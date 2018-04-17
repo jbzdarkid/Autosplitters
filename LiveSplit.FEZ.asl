@@ -1,7 +1,7 @@
 state("FEZ") {}
 
 startup
-{   
+{
   settings.Add("anySplits", true, "Any% Splits");
 
   settings.CurrentDefaultParent = "anySplits";
@@ -44,10 +44,11 @@ startup
       {
         var scanner = new SignatureScanner(proc, page.BaseAddress, (int)page.RegionSize);
 
-        if (ptr == IntPtr.Zero)
+        if (ptr == IntPtr.Zero) {
           ptr = scanner.Scan(target);
-        else
+        } else {
           break;
+        }
       }
     }
 
@@ -77,9 +78,13 @@ startup
   vars.ScanPlayerManager = (Action<Process>)((proc) => 
   {
     vars.scanPtr2 = vars.PageScan(proc, vars.scanTarget2, MemPageProtect.PAGE_READWRITE);
+    print("0x"+vars.scanPtr2.ToString("X"));
     vars.playerManagerAddr = vars.scanPtr2 + 0x19C;
+    print("0x"+vars.playerManagerAddr.ToString("X"));
     vars.gameStateAddr = proc.ReadValue<int>((IntPtr)vars.playerManagerAddr + 0x60);
+    print("0x"+vars.gameStateAddr.ToString("X"));
     vars.saveDataAddr = proc.ReadValue<int>((IntPtr)vars.gameStateAddr + 0x5C);
+    print("0x"+vars.saveDataAddr.ToString("X"));
 
     vars.playerManager = new MemoryWatcher<int>((IntPtr)vars.playerManagerAddr);
     vars.gomezAction = new MemoryWatcher<byte>((IntPtr)vars.playerManagerAddr + 0x70);
@@ -169,7 +174,7 @@ update
 
 start
 {
-   return vars.speedrunBegan.Current && vars.timerEnabled.Current;
+  return vars.speedrunBegan.Current && vars.timerEnabled.Current;
 }
 
 reset
