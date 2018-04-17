@@ -1,7 +1,6 @@
 state("FEZ") {}
 
-startup
-{
+startup {
   print("startup");
   settings.Add("anySplits", true, "Any% Splits");
 
@@ -23,8 +22,6 @@ startup
   settings.Add("ending32", false, "Ending (32)");
   settings.SetToolTip("ending32", "Exiting Gomez's house after 32-cube ending");
   
-  vars.stopwatch = new Stopwatch();
-
   vars.scanTarget1 = new SigScanTarget(0,
     "33 C0",        //xor eax,eax
     "F3 AB",        //repe stosd
@@ -111,8 +108,7 @@ startup
   });
 }
 
-init
-{
+init {
   print("init");
   vars.scanPtr1 = IntPtr.Zero;
   vars.scanPtr2 = IntPtr.Zero;
@@ -129,34 +125,30 @@ init
   vars.currentLevel = new StringWatcher(IntPtr.Zero, 0);
 
   vars.watchers = new MemoryWatcherList();
-  vars.stopwatch.Restart();
 }
 
-update
-{
+update {
   vars.watchers.UpdateAll(game);
   
-  if (vars.stopwatch.ElapsedMilliseconds > 3000 && (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero))
+  if (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero)
   {
     print("[Autosplitter] Scanning memory");
 
     vars.ScanStable(game);
     vars.ScanPlayerManager(game);
-
-    vars.stopwatch.Restart();
   }
-  else if (vars.stopwatch.ElapsedMilliseconds > 3000)
-    vars.stopwatch.Reset();
 
-  if (vars.timerAddr.Changed)
+  if (vars.timerAddr.Changed) {
     vars.GetTimer();
+  }
 
-  if (vars.playerManager.Changed)
+  if (vars.playerManager.Changed) {
     vars.ScanPlayerManager(game);
-  else if (vars.doorDestAddr.Changed && vars.doorDestAddr.Current != 0)
+  } else if (vars.doorDestAddr.Changed && vars.doorDestAddr.Current != 0) {
     vars.GetDoorDest(game);
-  else if (vars.currentLevelAddr.Changed)
+  } else if (vars.currentLevelAddr.Changed) {
     vars.GetCurrentLevel();
+  }
 
   vars.watchers = new MemoryWatcherList()
   {
@@ -174,18 +166,15 @@ update
   };
 }
 
-start
-{
+start {
   return vars.speedrunBegan.Current && vars.timerEnabled.Current;
 }
 
-reset
-{
+reset {
   return !vars.speedrunBegan.Current;
 }
 
-split
-{
+split {
   if (vars.doorEnter.Changed && vars.doorEnter.Current == 1) {
     print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDest.Current);
     // if (settings["Split on all doors"]) return true;
@@ -219,13 +208,11 @@ split
   }
 }
 
-isLoading
-{
+isLoading {
   return true;
 }
 
-gameTime
-{
+gameTime {
   if (vars.timerEnabled.Current)
   {
     var elapsedTicks = vars.timerElapsed.Current + Stopwatch.GetTimestamp() - vars.timerStart.Current;
