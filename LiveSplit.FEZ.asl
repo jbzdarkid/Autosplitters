@@ -58,14 +58,12 @@ startup {
 
     IntPtr scanPtr1 = vars.PageScan(proc, vars.scanTarget1, MemPageProtect.PAGE_EXECUTE_READWRITE);
     vars.scanPtr1 = scanPtr1;
-    int speedrunAddr = proc.ReadValue<int>(scanPtr1 + 0x6) - offset;
-    int timerPtr = proc.ReadValue<int>(scanPtr1 + 0x13) - offset;
+    int baseOffset = (int)scanPtr1 - offset;
 
-    vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunAddr));
-    vars.timerAddr = new MemoryWatcher<int>(new DeepPointer(timerPtr));
-    vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerPtr, 0x4));
-    vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerPtr, 0xC));
-    vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerPtr, 0x14));
+    vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(baseOffset + 0x6, 0x0));
+    vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(baseOffset + 0x13, 0x0, 0x4));
+    vars.timerStart = new MemoryWatcher<long>(new DeepPointer(baseOffset + 0x13, 0x0, 0xC));
+    vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(baseOffset + 0x13, 0x0, 0x14));
   });
 
   vars.ScanPlayerManager = (Action<Process>)((proc) => 
@@ -95,7 +93,6 @@ init {
   vars.scanPtr1 = IntPtr.Zero;
   vars.scanPtr2 = IntPtr.Zero;
   vars.speedrunIsLive = new MemoryWatcher<bool>(IntPtr.Zero);
-  vars.timerAddr = new MemoryWatcher<int>(IntPtr.Zero);
   vars.timerElapsed = new MemoryWatcher<long>(IntPtr.Zero);
   vars.timerStart = new MemoryWatcher<long>(IntPtr.Zero);
   vars.timerEnabled = new MemoryWatcher<bool>(IntPtr.Zero);
@@ -119,10 +116,6 @@ update {
     vars.ScanPlayerManager(game);
   }
 
-  if (vars.timerAddr.Changed) {
-    // vars.ScanStable(game);
-  }
-
   if (vars.playerManager.Changed) {
     vars.ScanPlayerManager(game);
   } else if (vars.doorDestAddr.Changed && vars.doorDestAddr.Current != 0) {
@@ -134,7 +127,6 @@ update {
   vars.watchers = new MemoryWatcherList()
   {
     vars.speedrunIsLive,
-    vars.timerAddr,
     vars.timerElapsed,
     vars.timerStart,
     vars.timerEnabled,
