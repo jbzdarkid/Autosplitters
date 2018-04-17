@@ -1,7 +1,6 @@
 state("FEZ") {}
 
 startup {
-  print("startup");
   settings.Add("anySplits", true, "Any% Splits");
 
   settings.CurrentDefaultParent = "anySplits";
@@ -55,29 +54,26 @@ startup {
 
   vars.ScanStable = (Action<Process>)((proc) => 
   {
-    vars.scanPtr1 = vars.PageScan(proc, vars.scanTarget1, MemPageProtect.PAGE_EXECUTE_READWRITE);
-    vars.speedrunAddr = proc.ReadValue<int>((IntPtr)vars.scanPtr1 + 0x6);
-    vars.timerPtr = proc.ReadValue<int>((IntPtr)vars.scanPtr1 + 0x13);
+    int offset = (int)proc.Modules[0].BaseAddress;
 
-    vars.speedrunBegan = new MemoryWatcher<bool>((IntPtr)vars.speedrunAddr);
-    vars.timerAddr = new MemoryWatcher<int>((IntPtr)vars.timerPtr);
-    vars.timerAddr.Update(proc);
+    IntPtr scanPtr1 = vars.PageScan(proc, vars.scanTarget1, MemPageProtect.PAGE_EXECUTE_READWRITE);
+    vars.scanPtr1 = scanPtr1;
+    int speedrunAddr = proc.ReadValue<int>(scanPtr1 + 0x6) - offset;
+    int timerPtr = proc.ReadValue<int>(scanPtr1 + 0x13) - offset;
 
-    vars.timerElapsed = new MemoryWatcher<long>((IntPtr)vars.timerAddr.Current + 0x4);
-    vars.timerStart = new MemoryWatcher<long>((IntPtr)vars.timerAddr.Current + 0xC);
-    vars.timerEnabled = new MemoryWatcher<bool>((IntPtr)vars.timerAddr.Current + 0x14);
+    vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunAddr));
+    vars.timerAddr = new MemoryWatcher<int>(new DeepPointer(timerPtr));
+    vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerPtr, 0x4));
+    vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerPtr, 0xC));
+    vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerPtr, 0x14));
   });
 
   vars.ScanPlayerManager = (Action<Process>)((proc) => 
   {
     vars.scanPtr2 = vars.PageScan(proc, vars.scanTarget2, MemPageProtect.PAGE_READWRITE);
-    print("0x"+vars.scanPtr2.ToString("X"));
     vars.playerManagerAddr = vars.scanPtr2 + 0x19C;
-    print("0x"+vars.playerManagerAddr.ToString("X"));
     vars.gameStateAddr = proc.ReadValue<int>((IntPtr)vars.playerManagerAddr + 0x60);
-    print("0x"+vars.gameStateAddr.ToString("X"));
     vars.saveDataAddr = proc.ReadValue<int>((IntPtr)vars.gameStateAddr + 0x5C);
-    print("0x"+vars.saveDataAddr.ToString("X"));
 
     vars.playerManager = new MemoryWatcher<int>((IntPtr)vars.playerManagerAddr);
     vars.gomezAction = new MemoryWatcher<byte>((IntPtr)vars.playerManagerAddr + 0x70);
@@ -86,18 +82,19 @@ startup {
     vars.currentLevelAddr = new MemoryWatcher<int>((IntPtr)vars.saveDataAddr + 0x14);
 
     vars.doorDestAddr.Update(proc);
-    vars.doorDest = proc.ReadString((IntPtr)vars.doorDestAddr.Current + 0x8, 44);
+    vars.doorDestSW = new StringWatcher((IntPtr)vars.doorDestAddr.Current + 0x8, 100);
 
     vars.currentLevelAddr.Update(proc);
     vars.currentLevel = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 44);
+    vars.level = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 100);
+    vars.level.Update(proc);
   });
 }
 
 init {
-  print("init");
   vars.scanPtr1 = IntPtr.Zero;
   vars.scanPtr2 = IntPtr.Zero;
-  vars.speedrunBegan = new MemoryWatcher<bool>(IntPtr.Zero);
+  vars.speedrunIsLive = new MemoryWatcher<bool>(IntPtr.Zero);
   vars.timerAddr = new MemoryWatcher<int>(IntPtr.Zero);
   vars.timerElapsed = new MemoryWatcher<long>(IntPtr.Zero);
   vars.timerStart = new MemoryWatcher<long>(IntPtr.Zero);
@@ -114,7 +111,7 @@ init {
 
 update {
   vars.watchers.UpdateAll(game);
-
+  
   if (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero) {
     print("[Autosplitter] Scanning memory");
 
@@ -123,7 +120,7 @@ update {
   }
 
   if (vars.timerAddr.Changed) {
-    vars.ScanStable(game);
+    // vars.ScanStable(game);
   }
 
   if (vars.playerManager.Changed) {
@@ -136,7 +133,7 @@ update {
 
   vars.watchers = new MemoryWatcherList()
   {
-    vars.speedrunBegan,
+    vars.speedrunIsLive,
     vars.timerAddr,
     vars.timerElapsed,
     vars.timerStart,
@@ -146,31 +143,32 @@ update {
     vars.doorEnter,
     vars.doorDestAddr,
     vars.currentLevelAddr,
-    vars.currentLevel
+    vars.currentLevel,
+    vars.doorDestSW,
   };
 }
 
 start {
-  return vars.speedrunBegan.Current && vars.timerEnabled.Current;
+  return vars.speedrunIsLive.Current && vars.timerEnabled.Current;
 }
 
 reset {
-  return !vars.speedrunBegan.Current;
+  return !vars.speedrunIsLive.Current;
 }
 
 split {
   if (vars.doorEnter.Changed && vars.doorEnter.Current == 1) {
-    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDest.Current);
+    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDestSW.Current);
     // if (settings["Split on all doors"]) return true;
-    if (vars.level.Current == "MEMORY_CORE" && vars.doorDest.Current == "NATURE_HUB") {
+    if (vars.level.Current == "MEMORY_CORE" && vars.doorDestSW.Current == "NATURE_HUB") {
       return settings["village"];
-    } else if (vars.level.Current == "TWO_WALLS" && vars.doorDest.Current == "NATURE_HUB") {
+    } else if (vars.level.Current == "TWO_WALLS" && vars.doorDestSW.Current == "NATURE_HUB") {
       return settings["bellTower"];
-    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.doorDest.Current == "MEMORY_CORE") {
+    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.doorDestSW.Current == "MEMORY_CORE") {
       return settings["lighthouse"];
-    } else if (vars.level.Current == "ZU_BRIDGE" && vars.doorDest.Current == "ZU_CITY_RUINS") {
+    } else if (vars.level.Current == "ZU_BRIDGE" && vars.doorDestSW.Current == "ZU_CITY_RUINS") {
       return settings["tree"];
-    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32") {
+    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDestSW == "VILLAGEVILLE_3D_END_32") {
       print("<177>");
       return settings["ending32"];
     }
@@ -186,7 +184,7 @@ split {
       return settings["zu"];
     }
   }
-  if (settings["ending32"] && vars.doorEnter.Current == 1 && vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current) {
+  if (settings["ending32"] && vars.doorEnter.Current == 1 && vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDestSW == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current) {
     print("<193>");
     return true;
   }
