@@ -86,20 +86,10 @@ startup {
     vars.currentLevelAddr = new MemoryWatcher<int>((IntPtr)vars.saveDataAddr + 0x14);
 
     vars.doorDestAddr.Update(proc);
-    vars.GetDoorDest(proc);
+    vars.doorDest = proc.ReadString((IntPtr)vars.doorDestAddr.Current + 0x8, 44);
 
     vars.currentLevelAddr.Update(proc);
-    vars.GetCurrentLevel();
-  });
-
-  vars.GetDoorDest = (Action<Process>)((proc) =>
-  {
-    vars.doorDest = proc.ReadString((IntPtr)vars.doorDestAddr.Current + 0x8, 44);
-  });
-
-  vars.GetCurrentLevel = (Action)(() =>
-  {
-    vars.currentLevel = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 44); //stringwatcher is used because the pointer changes before the string is loaded
+    vars.currentLevel = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 44);
   });
 }
 
@@ -125,10 +115,6 @@ init {
 update {
   vars.watchers.UpdateAll(game);
 
-  print("<121>" + vars.timerStart.Old + " " + vars.timerStart.Current);
-  print("<122>" + vars.timerElapsed.Old + " " + vars.timerElapsed.Current);
-//  print("<119>" + vars.scanPtr1);
-//  print("<120>" + vars.scanPtr2);
   if (vars.scanPtr1 == IntPtr.Zero || vars.scanPtr2 == IntPtr.Zero) {
     print("[Autosplitter] Scanning memory");
 
@@ -143,9 +129,9 @@ update {
   if (vars.playerManager.Changed) {
     vars.ScanPlayerManager(game);
   } else if (vars.doorDestAddr.Changed && vars.doorDestAddr.Current != 0) {
-    vars.GetDoorDest(game);
+    vars.ScanPlayerManager(game);
   } else if (vars.currentLevelAddr.Changed) {
-    vars.GetCurrentLevel();
+    vars.ScanPlayerManager(game);
   }
 
   vars.watchers = new MemoryWatcherList()
