@@ -31,8 +31,6 @@ startup {
   );
   vars.scanTarget2 = new SigScanTarget(0, "49 00 43 00 6F 00 6D 00 70 00 61 00 72 00 61 00 62 00 6C 00 65"); //IComparable
 
-  vars.watchers = new MemoryWatcherList();
-
   vars.PageScan = (Func<Process, SigScanTarget, MemPageProtect, int>)((proc, target, protect) => 
   {
     foreach (var page in proc.MemoryPages())
@@ -52,8 +50,12 @@ startup {
   });
 }
 
+init {
+  // Clear this in init so that restarting the game will force a re-scan of memory.
+  vars.watchers = new MemoryWatcherList();
+}
+
 update {
-  // TODO: Does this refresh? Also, should it live elsewhere?
   if (vars.watchers.Count == 0) {
     print("[Autosplitter] Scanning memory");
 
@@ -70,7 +72,10 @@ update {
     if (scanPtr2 == 0) return false;
 
     vars.gomezAction = new MemoryWatcher<byte>(new DeepPointer(scanPtr2 + 0x20C));
+    vars.changingLevel = new MemoryWatcher<byte>(new DeepPointer(scanPtr2 + 0x23F));
+    // Level isn't completely stable (too deep of a pointer, probably), so it hiccups some times.
     vars.level = new StringWatcher(new DeepPointer(scanPtr2 + 0x1FC, 0x5C, 0x14, 0x8), 100);
+    vars.nextLevel = new StringWatcher(new DeepPointer(scanPtr2 + 0x1D0, 0x8), 100);
 
     vars.watchers = new MemoryWatcherList() {
       vars.speedrunIsLive,
@@ -78,7 +83,9 @@ update {
       vars.timerStart,
       vars.timerEnabled,
       vars.gomezAction,
+      vars.changingLevel,
       vars.level,
+      vars.nextLevel,
     };
   }
   vars.watchers.UpdateAll(game);
@@ -93,18 +100,18 @@ reset {
 }
 
 split {
-  if (vars.level.Changed) {
-    print("[Autosplitter] Door Transition: " + vars.level.Old + " -> " + vars.level.Current);
+  if (vars.changingLevel.Old == 0 && vars.changingLevel.Current == 1) {
+    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.nextLevel.Current);
     // if (settings["Split on all doors"]) return true;
-    if (vars.level.Old == "MEMORY_CORE" && vars.level.Current == "NATURE_HUB") {
+    if (vars.level.Current == "MEMORY_CORE" && vars.nextLevel.Current == "NATURE_HUB") {
       return settings["village"];
-    } else if (vars.level.Old == "TWO_WALLS" && vars.level.Current == "NATURE_HUB") {
+    } else if (vars.level.Current == "TWO_WALLS" && vars.nextLevel.Current == "NATURE_HUB") {
       return settings["bellTower"];
-    } else if (vars.level.Old == "PIVOT_WATERTOWER" && vars.level.Current == "MEMORY_CORE") {
+    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.nextLevel.Current == "MEMORY_CORE") {
       return settings["lighthouse"];
-    } else if (vars.level.Old == "ZU_BRIDGE" && vars.level.Current == "ZU_CITY_RUINS") {
+    } else if (vars.level.Current == "ZU_BRIDGE" && vars.nextLevel.Current == "ZU_CITY_RUINS") {
       return settings["tree"];
-    } else if (vars.level.Old == "GOMEZ_HOUSE_END_32" && vars.level == "VILLAGEVILLE_3D_END_32") {
+    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.nextLevel.Current == "VILLAGEVILLE_3D_END_32") {
       return settings["ending32"];
     }
   }
