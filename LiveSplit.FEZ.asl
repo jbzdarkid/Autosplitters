@@ -68,6 +68,21 @@ startup {
 
   vars.ScanPlayerManager = (Action<Process>)((proc) => 
   {
+    int offset = (int)proc.Modules[0].BaseAddress;
+    
+    IntPtr scanPtr2 = vars.PageScan(proc, vars.scanTarget2, MemPageProtect.PAGE_READWRITE);
+    vars.scanPtr2 = scanPtr2;
+    int baseOffset = (int)scanPtr2 - offset;
+
+    vars.gomezAction = new MemoryWatcher<byte>(new DeepPointer(baseOffset + 0x20C));
+    vars.doorEnter = new MemoryWatcher<byte>(new DeepPointer(baseOffset + 0x23F));
+
+    vars.doorDest = new StringWatcher(new DeepPointer(baseOffset + 0x1D0, 0x8), 100);
+    vars.level = new StringWatcher(new DeepPointer(baseOffset + 0x1FC, 0x5C, 0x14, 0x8), 100);
+
+    /*
+
+
     vars.scanPtr2 = vars.PageScan(proc, vars.scanTarget2, MemPageProtect.PAGE_READWRITE);
     vars.playerManagerAddr = vars.scanPtr2 + 0x19C;
     vars.gameStateAddr = proc.ReadValue<int>((IntPtr)vars.playerManagerAddr + 0x60);
@@ -86,6 +101,7 @@ startup {
     vars.currentLevel = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 44);
     vars.level = new StringWatcher((IntPtr)vars.currentLevelAddr.Current + 0x8, 100);
     vars.level.Update(proc);
+    */
   });
 }
 
@@ -96,12 +112,8 @@ init {
   vars.timerElapsed = new MemoryWatcher<long>(IntPtr.Zero);
   vars.timerStart = new MemoryWatcher<long>(IntPtr.Zero);
   vars.timerEnabled = new MemoryWatcher<bool>(IntPtr.Zero);
-  vars.playerManager = new MemoryWatcher<int>(IntPtr.Zero);
   vars.gomezAction = new MemoryWatcher<int>(IntPtr.Zero);
   vars.doorEnter = new MemoryWatcher<byte>(IntPtr.Zero);
-  vars.doorDestAddr = new MemoryWatcher<int>(IntPtr.Zero);
-  vars.currentLevelAddr = new MemoryWatcher<int>(IntPtr.Zero);
-  vars.currentLevel = new StringWatcher(IntPtr.Zero, 0);
 
   vars.watchers = new MemoryWatcherList();
 }
@@ -116,27 +128,16 @@ update {
     vars.ScanPlayerManager(game);
   }
 
-  if (vars.playerManager.Changed) {
-    vars.ScanPlayerManager(game);
-  } else if (vars.doorDestAddr.Changed && vars.doorDestAddr.Current != 0) {
-    vars.ScanPlayerManager(game);
-  } else if (vars.currentLevelAddr.Changed) {
-    vars.ScanPlayerManager(game);
-  }
-
   vars.watchers = new MemoryWatcherList()
   {
     vars.speedrunIsLive,
     vars.timerElapsed,
     vars.timerStart,
     vars.timerEnabled,
-    vars.playerManager,
     vars.gomezAction,
     vars.doorEnter,
-    vars.doorDestAddr,
-    vars.currentLevelAddr,
-    vars.currentLevel,
-    vars.doorDestSW,
+    vars.level,
+    vars.doorDest,
   };
 }
 
@@ -150,17 +151,17 @@ reset {
 
 split {
   if (vars.doorEnter.Changed && vars.doorEnter.Current == 1) {
-    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDestSW.Current);
+    print("[Autosplitter] Door Transition: " + vars.level.Current + " -> " + vars.doorDest.Current);
     // if (settings["Split on all doors"]) return true;
-    if (vars.level.Current == "MEMORY_CORE" && vars.doorDestSW.Current == "NATURE_HUB") {
+    if (vars.level.Current == "MEMORY_CORE" && vars.doorDest.Current == "NATURE_HUB") {
       return settings["village"];
-    } else if (vars.level.Current == "TWO_WALLS" && vars.doorDestSW.Current == "NATURE_HUB") {
+    } else if (vars.level.Current == "TWO_WALLS" && vars.doorDest.Current == "NATURE_HUB") {
       return settings["bellTower"];
-    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.doorDestSW.Current == "MEMORY_CORE") {
+    } else if (vars.level.Current == "PIVOT_WATERTOWER" && vars.doorDest.Current == "MEMORY_CORE") {
       return settings["lighthouse"];
-    } else if (vars.level.Current == "ZU_BRIDGE" && vars.doorDestSW.Current == "ZU_CITY_RUINS") {
+    } else if (vars.level.Current == "ZU_BRIDGE" && vars.doorDest.Current == "ZU_CITY_RUINS") {
       return settings["tree"];
-    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDestSW == "VILLAGEVILLE_3D_END_32") {
+    } else if (vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32") {
       print("<177>");
       return settings["ending32"];
     }
@@ -176,7 +177,7 @@ split {
       return settings["zu"];
     }
   }
-  if (settings["ending32"] && vars.doorEnter.Current == 1 && vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDestSW == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current) {
+  if (settings["ending32"] && vars.doorEnter.Current == 1 && vars.level.Current == "GOMEZ_HOUSE_END_32" && vars.doorDest == "VILLAGEVILLE_3D_END_32" && !vars.timerEnabled.Current) {
     print("<193>");
     return true;
   }
