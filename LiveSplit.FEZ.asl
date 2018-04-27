@@ -268,7 +268,7 @@ split {
   if (vars.levelWatcher.Changed) {
     string oldLevel = vars.level;
     string newLevel = vars.levelWatcher.Current;
-    if (vars.levels.Contains(newLevel)) {
+    if (vars.levels.Contains(newLevel) && oldLevel != newLevel) {
       print("[Autosplitter] Door Transition: " + oldLevel + " -> " + newLevel);
       vars.level = newLevel;
       if (settings["all_levels"]) {
