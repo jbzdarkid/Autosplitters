@@ -3,6 +3,7 @@ state("Talos_Unrestricted") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
 // TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
+// TODO: Change worldsplits to be all sigils (not just tetros)
 
 startup {
   // Commonly used, defaults to true
@@ -26,7 +27,7 @@ startup {
   settings.Add("(Custom/DLC) Split when solving any arranger", false);
   settings.Add("(Custom/DLC) Split on any world transition", false);
 
-  settings.Add("worldsplits", true, "Don't split on tetromino collections in these worlds:");
+  settings.Add("worldsplits", true, "Don't split on sigil collections in these worlds:");
   settings.CurrentDefaultParent = "worldsplits";
   settings.Add("worldsplits-A4", false, "A4");
   settings.Add("worldsplits-A6", false, "A6");
@@ -221,6 +222,34 @@ split {
         return true;
       }
     }
+    if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
+      print("Not splitting for a collection in A4, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-A6"] && vars.currentWorld.EndsWith("Cloud_1_06.wld")) {
+      print("Not splitting for a collection in A6, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-B1"] && vars.currentWorld.EndsWith("Cloud_2_01.wld")) {
+      print("Not splitting for a collection in B1, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-B3"] && vars.currentWorld.EndsWith("Cloud_2_03.wld")) {
+      print("Not splitting for a collection in B3, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-B4"] && vars.currentWorld.EndsWith("Cloud_2_04.wld")) {
+      print("Not splitting for a collection in B4, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-B6"] && vars.currentWorld.EndsWith("Cloud_2_06.wld")) {
+      print("Not splitting for a collection in B6, per setting.");
+      return false;
+    }
+    if (settings["worldsplits-B8"] && vars.currentWorld.EndsWith("Cloud_2_08.wld")) {
+      print("Not splitting for a collection in B8, per setting.");
+      return false;
+    }
     if (sigil.StartsWith("**")) {
       if (settings["Split on star collection"]) {
         return true;
@@ -230,34 +259,6 @@ split {
         }
       }
     } else {
-      if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
-        print("Not splitting for a collection in A4, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-A6"] && vars.currentWorld.EndsWith("Cloud_1_06.wld")) {
-        print("Not splitting for a collection in A6, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-B1"] && vars.currentWorld.EndsWith("Cloud_2_01.wld")) {
-        print("Not splitting for a collection in B1, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-B3"] && vars.currentWorld.EndsWith("Cloud_2_03.wld")) {
-        print("Not splitting for a collection in B3, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-B4"] && vars.currentWorld.EndsWith("Cloud_2_04.wld")) {
-        print("Not splitting for a collection in B4, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-B6"] && vars.currentWorld.EndsWith("Cloud_2_06.wld")) {
-        print("Not splitting for a collection in B6, per setting.");
-        return false;
-      }
-      if (settings["worldsplits-B8"] && vars.currentWorld.EndsWith("Cloud_2_08.wld")) {
-        print("Not splitting for a collection in B8, per setting.");
-        return false;
-      }
       return settings["Split on tetromino collection or DLC robot collection"];
     }
   }
