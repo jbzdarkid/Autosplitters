@@ -1,9 +1,6 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
 
-// TODO: Entity_Machine_Panel::init_pattern_data_lotus
-// TODO: globals, 18, BFF*8, 100/108, 0 (text) -> triple which is valid
-
 startup {
   // Environmental puzzles/patterns, the +135
   settings.Add("Split on environmental patterns", false);
@@ -81,6 +78,8 @@ startup {
   settings.Add("Reset on challenge stop", false);
   settings.Add("Split on challenge end", false);
   settings.Add("Split on easter egg ending", true);
+  settings.Add("Enable random doors practice", false);
+  vars.randomDoorsHack = false;
 }
 
 init {
@@ -98,8 +97,7 @@ init {
     "74 06"              // je 6
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find current puzzle!");
-    return false;
+    throw new Exception("Could not find current puzzle!");
   }
   int relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
   vars.puzzle = new MemoryWatcher<int>(new DeepPointer(
@@ -117,8 +115,7 @@ init {
     "48 0F45 C8"               // cmovne rcx, rax
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find solved and completed offsets!");
-    return false;
+    throw new Exception("Could not find solved and completed offsets!");
   }
   vars.solvedOffset = game.ReadValue<int>(ptr+2);
   vars.completedOffset = game.ReadValue<int>(ptr+38);
@@ -130,8 +127,7 @@ init {
     "FF 83 ????????"  // inc [rbx + offset]
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find obelisk count offset!");
-    return false;
+    throw new Exception("Could not find obelisk count offset!");
   }
   int obeliskOffset = game.ReadValue<int>(ptr);
 
@@ -141,8 +137,7 @@ init {
     "F3 0F59 89 ????????"  // mulss xmm1, [rcx + ??]
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find door offset!");
-    return false;
+    throw new Exception("Could not find door offset!");
   }
   int doorOffset = game.ReadValue<int>(ptr);
   vars.mountainDoor = new MemoryWatcher<float>(new DeepPointer(
@@ -197,8 +192,7 @@ init {
     "66 0F5A D2"           // cvtpd2ps xmm2, xmm2
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find time!");
-    return false;
+    throw new Exception("Could not find time!");
   }
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
   vars.time = new MemoryWatcher<double>(new DeepPointer(
@@ -212,8 +206,7 @@ init {
     "0F28 7C 24 ??"   // movaps xmm7, [rsp+??]
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find game frames!");
-    return false;
+    throw new Exception("Could not find game frames!");
   }
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
   vars.gameFrames = new MemoryWatcher<int>(new DeepPointer(
@@ -227,8 +220,7 @@ init {
     "75 ??"                    // jne ??
   ));
   if (ptr == IntPtr.Zero) {
-    print("Could not find player movement!");
-    return false;
+    throw new Exception("Could not find player movement!");
   }
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 8;
   vars.playerMoving = new MemoryWatcher<int>(new DeepPointer(
@@ -307,6 +299,8 @@ init {
       }
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
+      // Multi panel is handled separately, so it should never split
+      vars.addPanel(0x9FCD, 0, vars.completedOffset);
       // Cinema input panel unsolves itself the first time
       vars.addPanel(0x00816, 0, vars.solvedOffset);
     } else {
@@ -338,6 +332,62 @@ init {
     }
   });
   vars.initPuzzles();
+  
+  vars.randomDoorsPractice = (Func<bool>)(() => {
+    bool enable = settings["Enable random doors practice"];
+    // Entity_Door::close
+    ptr = scanner.Scan(new SigScanTarget(11, // Targeting byte 11
+      "84 C0",               // test al, al
+      "74 11",               // je 11
+      "0F 2F BF ?? ?? 00 00" // comiss xmm7, [rdi + offset]
+      // "76 08" -> "77 08"  // jbe 08 -> ja 08
+    ));
+    if (ptr == IntPtr.Zero) {
+      return false;
+    }
+    // This replaces the logic of
+    if (!enable) {
+      // If a puzzle is NOT solved, turn it off
+      game.WriteBytes(ptr, new byte[] {0x76});
+    } else { // with
+      // If a puzzle IS solved, turn it off
+      game.WriteBytes(ptr, new byte[] {0x77});
+    }
+
+    // Entity_Door::open
+    ptr = scanner.Scan(new SigScanTarget(11, // Targeting byte 11
+      "84 C0",               // test al, al
+      "74 19",               // je 19
+      "0F 2F B7 ?? ?? 00 00" // comiss xmm6, [rdi + offset]
+      // "76 10" -> "90 90"  // jbe 10 -> nop nop
+    ));
+    if (ptr == IntPtr.Zero) {
+      return false;
+    }
+    // This replaces the logic of
+    if (!enable) {
+      // If a puzzle is NOT solved, clear it. Always turn the puzzle on.
+      // This differs slightly from the original logic but is equivalent and slightly safer.
+      game.WriteBytes(ptr, new byte[] {0x76, 0x08});
+    } else { // with
+      // Always clear the lines from a puzzle and turn it on
+      game.WriteBytes(ptr, new byte[] {0x90, 0x90});
+    }
+    
+    IntPtr leftDoor = (new DeepPointer(basePointer, 0x18, 0x1983*8)).Deref<IntPtr>(game);
+    IntPtr rightDoor = (new DeepPointer(basePointer, 0x18, 0x1987*8)).Deref<IntPtr>(game);
+
+    // Adjust from "solved_t_target" to "id_to_power" is 0x20
+    int idToPower = game.ReadValue<int>(ptr-4) + 0x20;
+    if (!enable) {
+      game.WriteBytes(leftDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
+      game.WriteBytes(rightDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
+    } else {
+      game.WriteBytes(leftDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
+      game.WriteBytes(rightDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
+    }
+    return true;
+  });
 }
 
 update {
@@ -357,6 +407,16 @@ update {
   vars.eyelidStart.Update(game);
   vars.keepWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
+  
+  if (settings["Enable random doors practice"] != vars.randomDoorsHack) {
+    print(vars.randomDoorsHack + " " + settings["Enable random doors practice"]);
+    bool success = vars.randomDoorsPractice();
+    if (!success) {
+      // Only update the variable if the injection succeeded. We'll try again next frame.
+      return false; 
+    }
+  }
+  vars.randomDoorsHack = settings["Enable random doors practice"];
 }
 
 isLoading {
@@ -383,6 +443,7 @@ start {
     if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
       vars.startTime = vars.time.Current;
       vars.initPuzzles();
+      vars.randomDoorsHack = false;
       return true;
     }
   }
@@ -390,6 +451,7 @@ start {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.startTime = vars.time.Current;
       vars.initPuzzles();
+      vars.randomDoorsHack = false;
       return true;
     }
   }
@@ -401,8 +463,9 @@ split {
     vars.activePanel = panel;
     print("Started panel 0x"+panel.ToString("X"));
     if (!vars.panels.ContainsKey(panel) && settings["Split on all panels (solving and non-solving)"]) {
-      // print("Encountered new panel 0x"+puzzle.ToString("X"));
+      print("Encountered new panel 0x"+panel.ToString("X"));
       vars.addPanel(panel, 1, vars.solvedOffset);
+      print(""+vars.panels[panel]);
     }
   }
   if (vars.activePanel != 0) {
