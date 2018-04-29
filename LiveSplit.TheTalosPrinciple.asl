@@ -3,7 +3,6 @@ state("Talos_Unrestricted") {}
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
 // TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
-// TODO: Change worldsplits to be all sigils (not just tetros)
 
 startup {
   // Commonly used, defaults to true
