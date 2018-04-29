@@ -359,7 +359,7 @@ init {
       "84 C0",               // test al, al
       "74 19",               // je 19
       "0F 2F B7 ?? ?? 00 00" // comiss xmm6, [rdi + offset]
-      // "76 10" -> "90 90"  // jbe 10 -> nop nop
+      // "76 10" -> "EB 08"  // jbe 10 -> jmp 08
     ));
     if (ptr == IntPtr.Zero) {
       return false;
@@ -367,11 +367,11 @@ init {
     // This replaces the logic of
     if (!enable) {
       // If a puzzle is NOT solved, clear it. Always turn the puzzle on.
-      // This differs slightly from the original logic but is equivalent and slightly safer.
+      // Note: This differs slightly from the original logic but is equivalent and slightly safer.
       game.WriteBytes(ptr, new byte[] {0x76, 0x08});
     } else { // with
-      // Always clear the lines from a puzzle and turn it on
-      game.WriteBytes(ptr, new byte[] {0x90, 0x90});
+      // Always turn the puzzle on
+      game.WriteBytes(ptr, new byte[] {0xEB, 0x08});
     }
     
     IntPtr leftDoor = (new DeepPointer(basePointer, 0x18, 0x1983*8)).Deref<IntPtr>(game);
@@ -379,10 +379,13 @@ init {
 
     // Adjust from "solved_t_target" to "id_to_power" is 0x20
     int idToPower = game.ReadValue<int>(ptr-4) + 0x20;
+    // This replaces the logic of
     if (!enable) {
+      // Power the double doors
       game.WriteBytes(leftDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
       game.WriteBytes(rightDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
-    } else {
+    } else { // with
+      // Power nothing
       game.WriteBytes(leftDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
       game.WriteBytes(rightDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
     }
