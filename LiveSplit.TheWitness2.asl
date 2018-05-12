@@ -79,13 +79,13 @@ startup {
   settings.Add("Split on challenge end", false);
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
-  vars.randomDoorsHack = false;
 }
 
 init {
   vars.panels = null; // Used to detect if init completes properly
   vars.startTime = 0.0;
   vars.activePanel = 0;
+  vars.randomDoorsState = settings["Enable random doors practice"];
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
@@ -287,8 +287,6 @@ init {
     print("Loaded with EP count: "+vars.epCount);
     vars.panels.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
-      // Multi-panels use the solved offset, since they need to be solved every time you exit them
-      foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999, vars.solvedOffset);
       foreach (var panel in vars.keepWalkOns) {
         vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
       }
@@ -297,10 +295,9 @@ init {
         vars.addPanel(panel, 0, vars.solvedOffset);
         vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
       }
+      vars.multiWatchers.UpdateAll(game);
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
-      // Multi panel is handled separately, so it should never split
-      vars.addPanel(0x9FCD, 0, vars.completedOffset);
       // Cinema input panel unsolves itself the first time
       vars.addPanel(0x00816, 0, vars.solvedOffset);
     } else {
@@ -333,7 +330,7 @@ init {
   });
   vars.initPuzzles();
   
-  vars.randomDoorsPractice = (Func<bool>)(() => {
+  vars.randomDoorsInjection = (Func<bool>)(() => {
     bool enable = settings["Enable random doors practice"];
     // Entity_Door::close
     ptr = scanner.Scan(new SigScanTarget(11, // Targeting byte 11
@@ -389,6 +386,8 @@ init {
       game.WriteBytes(leftDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
       game.WriteBytes(rightDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
     }
+    // Only update the variable if the injection succeeded. We'll try again next frame.
+    vars.randomDoorsState = enable;
     return true;
   });
 }
@@ -409,17 +408,13 @@ update {
   vars.movie.Update(game);
   vars.eyelidStart.Update(game);
   vars.keepWatchers.UpdateAll(game);
+  vars.multiWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
-  
-  if (settings["Enable random doors practice"] != vars.randomDoorsHack) {
-    print(vars.randomDoorsHack + " " + settings["Enable random doors practice"]);
-    bool success = vars.randomDoorsPractice();
-    if (!success) {
-      // Only update the variable if the injection succeeded. We'll try again next frame.
-      return false; 
-    }
+
+  if (settings["Enable random doors practice"] != vars.randomDoorsState) {
+    print(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
+    vars.randomDoorsInjection();
   }
-  vars.randomDoorsHack = settings["Enable random doors practice"];
 }
 
 isLoading {
@@ -442,11 +437,11 @@ reset {
 }
 
 start {
-  if (vars.startTime == 0.0) {
-    if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
+  if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
+    vars.randomDoorsInjection();
+    if (vars.startTime == 0.0) {
       vars.startTime = vars.time.Current;
       vars.initPuzzles();
-      vars.randomDoorsHack = false;
       return true;
     }
   }
@@ -454,7 +449,6 @@ start {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.startTime = vars.time.Current;
       vars.initPuzzles();
-      vars.randomDoorsHack = false;
       return true;
     }
   }
@@ -468,7 +462,6 @@ split {
     if (!vars.panels.ContainsKey(panel) && settings["Split on all panels (solving and non-solving)"]) {
       print("Encountered new panel 0x"+panel.ToString("X"));
       vars.addPanel(panel, 1, vars.solvedOffset);
-      print(""+vars.panels[panel]);
     }
   }
   if (vars.activePanel != 0) {
