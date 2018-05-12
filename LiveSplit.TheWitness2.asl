@@ -296,6 +296,8 @@ init {
         vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
       }
       vars.multiWatchers.UpdateAll(game);
+      // Multi-panels use the solved offset, since they need to be solved every time you exit them
+      foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999, vars.solvedOffset);
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
       // Cinema input panel unsolves itself the first time
