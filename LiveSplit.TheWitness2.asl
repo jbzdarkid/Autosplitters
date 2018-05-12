@@ -503,8 +503,16 @@ split {
   if (settings["Split on all panels (solving and non-solving)"]) {
     // Challenge starting panel unsolves itself
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-      print("Started the challenge");
-      return true;
+      var puzzleData = vars.panels[0x0A333];
+      vars.panels[0x0A333] = new Tuple<int, int, DeepPointer>(
+        puzzleData.Item1 + 1, // Solve count
+        puzzleData.Item2,     // Maximum split count
+        puzzleData.Item3      // State pointer
+      );
+      print("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1+ " of "+puzzleData.Item2 + " time(s)");
+      if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
+        return true;
+      }
     }
     if (vars.movie.Old != vars.movie.Current) {
       print(vars.movie.Old+" "+vars.movie.Current);
