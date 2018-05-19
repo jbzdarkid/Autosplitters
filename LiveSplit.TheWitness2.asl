@@ -75,10 +75,13 @@ startup {
   settings.Add("Split on mountain elevator", false);
   settings.Add("Split on final elevator", true);
   settings.Add("Start/split on challenge start", false);
+
+  // Other misc settings
   settings.Add("Reset on challenge stop", false);
   settings.Add("Split on challenge end", false);
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
+  settings.Add("Override first text component with a Failed Panels count", false);
 }
 
 init {
@@ -89,6 +92,21 @@ init {
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
+  vars.deathCount = 0;
+  vars.updateText = false;
+  vars.tcs = null;
+  if (settings["Override first text component with a Failed Panels count"]) {
+    foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
+      if (component.GetType().Name == "TextComponent") {
+        vars.tc = component;
+        vars.tcs = vars.tc.Settings;
+        vars.updateText = true;
+        print("Found text component at " + component);
+        break;
+      }
+    }
+  }
+  
   // get_active_panel()
   IntPtr ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
     "48 8B 05 ????????", // mov rax, [witness64_d3d11.exe + offset]
@@ -185,11 +203,11 @@ init {
     // + " | EP name offset: "+vars.epNameOffset.ToString("X")
   );
 
-  // player_is_inside_movement_hint_marker()
-  ptr = scanner.Scan(new SigScanTarget(4, // Targeting byte 4
-    "F2 0F10 15 ????????", // movsd xmm2, [Core::time_info+10]
-    "0F57 C9",             // xorps xmm1, xmm1
-    "66 0F5A D2"           // cvtpd2ps xmm2, xmm2
+  // get_panel_color_cycle_factors()
+  ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
+    "83 FA 02",           // cmp edx, 02
+    "7F 3B",              // jg get_panel_color_cycle_factors + A9
+    "F2 0F10 05 ????????" // movsd xmm0, [Core::time_info+10]
   ));
   if (ptr == IntPtr.Zero) {
     throw new Exception("Could not find time!");
@@ -417,6 +435,11 @@ update {
     print(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
     vars.randomDoorsInjection();
   }
+  if (vars.tcs != null && (vars.updateText || old.deathCount != current.deathCount)) {
+    vars.tcs.Text1 = "Failed Panels:";
+    vars.tcs.Text2 = vars.deathCount.ToString();
+  }
+
 }
 
 isLoading {
@@ -443,6 +466,7 @@ start {
     vars.randomDoorsInjection();
     if (vars.startTime == 0.0) {
       vars.startTime = vars.time.Current;
+      vars.deathCount = 0;
       vars.initPuzzles();
       return true;
     }
@@ -450,6 +474,7 @@ start {
   if (settings["Start/split on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.startTime = vars.time.Current;
+      vars.deathCount = 0;
       vars.initPuzzles();
       return true;
     }
@@ -497,6 +522,9 @@ split {
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
+    } else if (state == 2 || state == 3) {
+      vars.activePanel = 0;
+      vars.deathCount++;
     } else if (state != 0) {
       print("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
