@@ -1,6 +1,5 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
-// TODO: Movie splits are broken -- open up the code and figure this out
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -26,6 +25,7 @@ startup {
     0x334D9, // Town RGB light control
 
     0x09E3A, 0x09ED9, 0x09E87, // Purple, Blue, Orange Mountain Walkways
+    0x00816, // Cinema input panel
     0x03554, 0x03553, 0x0354F, 0x0354A, 0x03550, 0x03546, // Cinema Panels
     0x0A3B6, // Tutorial Back Left
     0x0362A, // Tutorial Gate
@@ -176,30 +176,13 @@ init {
   vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
     basePointer, 0x18, 0xBFF*8, recordPowerOffset
   ));
-
-  // get_active_video_player_panel
-  ptr = scanner.Scan(new SigScanTarget(4, // Targeting byte 4
-    "5B",             // pop rbx
-    "C3",             // ret
-    "8B 81 ????????", // mov eax, [rcx+offset]
-    "85 C0",          // test eax, eax
-    "74 2A"           // je ??
-  ));
-  if (ptr == IntPtr.Zero) {
-    throw new Exception("Could not find active movie!");
-  }
-  int activeMovieOffset = game.ReadValue<int>(ptr);
-  vars.movie = new MemoryWatcher<int>(new DeepPointer(
-    basePointer, 0x18, 0x3B6*8, activeMovieOffset
-  ));
-
+  
   print(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
     + " | Door offset: "+doorOffset.ToString("X")
     + " | Record Power offset: "+recordPowerOffset.ToString("X")
-    + " | Active Movie offset: "+activeMovieOffset.ToString("X")
     // + " | Panel name offset: "+vars.panelNameOffset.ToString("X")
     // + " | EP name offset: "+vars.epNameOffset.ToString("X")
   );
@@ -321,8 +304,6 @@ init {
       foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999, vars.solvedOffset);
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
-      // Cinema input panel unsolves itself the first time
-      vars.addPanel(0x00816, 0, vars.solvedOffset);
     } else {
       // Individual panels use the completed offset, since they just need to be completed the first time you exit them
       if (settings["Split on lasers"]) {
@@ -428,7 +409,6 @@ update {
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
   vars.mountainDoor.Update(game);
-  vars.movie.Update(game);
   vars.eyelidStart.Update(game);
   vars.keepWatchers.UpdateAll(game);
   vars.multiWatchers.UpdateAll(game);
@@ -508,7 +488,10 @@ split {
     // 3: Exited
     // 4: Pending negation
     // 5: Floor Meta Subpanel error
-    if (state == 1 || state == 4) {
+    if (state == 1 || state == 4 ||
+      // Cinema input panel exits in state 3 on the first solve
+      (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0)
+    ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Solve count
         puzzleData.Item2,     // Maximum split count
@@ -541,26 +524,12 @@ split {
         puzzleData.Item2,     // Maximum split count
         puzzleData.Item3      // State pointer
       );
-      print("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1+ " of "+puzzleData.Item2 + " time(s)");
+      print("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1 + " of " + puzzleData.Item2 + " time(s)");
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
     }
-    if (vars.movie.Old != vars.movie.Current) {
-      print(vars.movie.Old+" "+vars.movie.Current);
-    }
-    // Cinema starting panel unsolves itself
-    if (vars.movie.Old != vars.movie.Current) {
-      if (vars.movie.Old == 2070 || vars.movie.Current == 2070) {
-        return false; // Initialization
-      }
-      if (vars.movie.Current == 0) {
-        return false; // Movie ending
-      }
-      print("Started movie 0x"+vars.movie.Current.ToString("X"));
-      return true;
-    }
-    // Keep panels don't trigger nicely
+    // Keep panels don't trigger nicely since they never become the active panel
     for (int i=0; i<vars.keepWatchers.Count; i++) {
       var panel = vars.keepWatchers[i];
       if (panel.Old == 0 && panel.Current == 1) {
