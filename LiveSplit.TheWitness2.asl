@@ -1,5 +1,6 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
+// TODO: Movie splits are broken -- open up the code and figure this out
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -191,7 +192,7 @@ init {
   vars.movie = new MemoryWatcher<int>(new DeepPointer(
     basePointer, 0x18, 0x3B6*8, activeMovieOffset
   ));
-  
+
   print(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
@@ -216,7 +217,7 @@ init {
   vars.time = new MemoryWatcher<double>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr)
   ));
-  
+
   // update_scripted_stuff()
   ptr = scanner.Scan(new SigScanTarget(2, // Targeting byte 2
     "FF 05 ????????", // inc [num_script_frames]
@@ -244,7 +245,7 @@ init {
   vars.playerMoving = new MemoryWatcher<int>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr)
   ));
-  
+
   // end2_eyelid_trigger()
   ptr = scanner.Scan(new SigScanTarget(8, // Targeting byte 8
     "48 83 EC ??",         // sub rsp, 28
@@ -259,13 +260,13 @@ init {
   vars.eyelidStart = new MemoryWatcher<double>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr)
   ));
-  
+
   // Entity_Audio_Recording::play_or_stop()
   // 83 BB ???????? 00 48 8B CB 74 0A
-  
+
   // do_focus_mode_left_mouse_press()
   // 8B 05 ???????? 85 C0 74 5B
-  
+
   Func<int, int, DeepPointer> createPointer = (int puzzle, int offset) => {
     return new DeepPointer(basePointer, 0x18, (puzzle-1)*8, offset);
   };
@@ -289,8 +290,6 @@ init {
   });
 
   vars.panels = new Dictionary<int, Tuple<int, int, DeepPointer>>();
-  vars.keepWatchers = new MemoryWatcherList();
-  vars.multiWatchers = new MemoryWatcherList();
   vars.obeliskWatchers = new MemoryWatcherList();
 
   if (settings["Split on environmental patterns"]) {
@@ -305,10 +304,12 @@ init {
     print("Loaded with EP count: "+vars.epCount);
     vars.panels.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
+      vars.keepWatchers = new MemoryWatcherList();
       foreach (var panel in vars.keepWalkOns) {
         vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
       }
       vars.keepWatchers.UpdateAll(game);
+      vars.multiWatchers = new MemoryWatcherList();
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0, vars.solvedOffset);
         vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
@@ -349,7 +350,7 @@ init {
     }
   });
   vars.initPuzzles();
-  
+
   vars.randomDoorsInjection = (Func<bool>)(() => {
     bool enable = settings["Enable random doors practice"];
     // Entity_Door::close
@@ -390,7 +391,7 @@ init {
       // Always turn the puzzle on
       game.WriteBytes(ptr, new byte[] {0xEB, 0x08});
     }
-    
+
     IntPtr leftDoor = (new DeepPointer(basePointer, 0x18, 0x1983*8)).Deref<IntPtr>(game);
     IntPtr rightDoor = (new DeepPointer(basePointer, 0x18, 0x1987*8)).Deref<IntPtr>(game);
 
@@ -414,7 +415,7 @@ init {
 
 update {
   if (vars.panels == null) return false; // Init not yet done
-  
+
   // Don't run if the game is loading / paused
   vars.time.Update(game);
   if (vars.time.Current <= vars.time.Old) return false;
@@ -439,7 +440,6 @@ update {
     vars.tcs.Text1 = "Failed Panels:";
     vars.tcs.Text2 = vars.deathCount.ToString();
   }
-
 }
 
 isLoading {
