@@ -291,6 +291,8 @@ init {
 
   vars.panels = new Dictionary<int, Tuple<int, int, DeepPointer>>();
   vars.obeliskWatchers = new MemoryWatcherList();
+  vars.keepWatchers = new MemoryWatcherList();
+  vars.multiWatchers = new MemoryWatcherList();
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
