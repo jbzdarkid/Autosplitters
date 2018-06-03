@@ -468,9 +468,13 @@ split {
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
     print("Started panel 0x"+panel.ToString("X"));
-    if (!vars.panels.ContainsKey(panel) && settings["Split on all panels (solving and non-solving)"]) {
+    if (!vars.panels.ContainsKey(panel)) {
       print("Encountered new panel 0x"+panel.ToString("X"));
-      vars.addPanel(panel, 1, vars.solvedOffset);
+      if (settings["Split on all panels (solving and non-solving)"]) {
+        vars.addPanel(panel, 1, vars.solvedOffset);
+      } else {
+        vars.addPanel(panel, 0, vars.solvedOffset);
+      }
     }
   }
   if (vars.activePanel != 0) {
@@ -508,6 +512,7 @@ split {
         return true;
       }
     } else if (state == 2 || state == 3) {
+      print("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
       vars.deathCount++;
     } else if (state != 0) {
