@@ -120,6 +120,7 @@ state("FEZ") {}
 // 75: IdleYawn
 
 startup {
+  vars.timerDebug = 0.0;
   settings.Add("cubes", false, "Split on Cubes");
   settings.Add("all_levels", false, "Split when changing levels");
   
@@ -307,7 +308,16 @@ isLoading {
 gameTime {
   if (vars.timerEnabled.Current)
   {
-    var elapsedTicks = vars.timerElapsed.Current + Stopwatch.GetTimestamp() - vars.timerStart.Current;
-    return new TimeSpan(elapsedTicks * 10000000 / Stopwatch.Frequency);
+    var timestamp = Stopwatch.GetTimestamp();
+    var start = vars.timerStart.Current;
+    var elapsed = vars.timerElapsed.Current;
+
+    var elapsedTicks = timestamp - start + elapsed;
+    var newTimerDebug = elapsedTicks * 10000000 / Stopwatch.Frequency;
+    if (Math.Abs(vars.timerDebug - newTimerDebug) > 10000000) {
+      print(start + " " + timestamp + " " + elapsed + " " + vars.timerDebug + " " + newTimerDebug);
+    }
+    vars.timerDebug = newTimerDebug;
+    return new TimeSpan(vars.timerDebug);
   }
 }
