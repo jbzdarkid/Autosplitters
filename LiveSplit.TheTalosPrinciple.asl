@@ -275,7 +275,8 @@ split {
     if (puzzle.StartsWith("SecretDoor")) {
       return settings["Split on tetromino star doors"];
     }
-    if (puzzle.StartsWith("Nexus")) {
+    // F6 uses it's own name
+    if (puzzle.StartsWith("Nexus") || puzzle.StartsWith("AlternativeEding") {
       return settings["Split on tetromino tower doors"];
     }
     if (puzzle.StartsWith("DLC_01_Secret")) {
