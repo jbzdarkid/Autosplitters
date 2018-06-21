@@ -58,7 +58,7 @@ init {
 
   // TODO: These should work for auto start & death count
   vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(0x0));
-  vars.gomezAction = new MemoryWatcher<bool>(new DeepPointer(0x0));
+  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
   /*
     SigScanTarget(0,
       "33 C0",                // xor eax,eax
@@ -69,11 +69,6 @@ init {
       "38 01"                 // cmp [ecx],al
     );
     vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(scanPtr1 + 0x6, 0x0));
-
-    new SigScanTarget(0,
-      "49 00 43 00 6F 00 6D 00 70 00 61 00 72 00 61 00 62 00 6C 00 65" // IComparable
-    ));
-    vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(scanPtr2 + 0x20C));
   */
   
   vars.watchers = new MemoryWatcherList() {
