@@ -29,47 +29,53 @@ startup {
 }
 
 init {
-  print("[Autosplitter] Scanning for FezGame");
-  
+  print("Running signature scans...");
   int fezGame = 0;
+  int speedrunIsLive = 0;
+  int timerBase = 0;
+  IntPtr ptr;
   foreach (var page in game.MemoryPages()) {
-    if (page.Protect != MemPageProtect.PAGE_READWRITE) continue;
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-    IntPtr ptr = scanner.Scan(new SigScanTarget(0,
+    ptr = scanner.Scan(new SigScanTarget(0,
       "32 00 30 00 31 00 36 00 2D 00 31 00 32 00 2D 00 30 00 31" // 2016-12-01 19:39:28
     ));
     if (ptr != IntPtr.Zero) {
       fezGame = (int)ptr - (int)game.Modules[0].BaseAddress - 0xA0;
-      break;
+    }
+    
+    // FezGame.Speedrun::Draw
+    ptr = scanner.Scan(new SigScanTarget(6,
+      "33 C0",               // xor eax,eax
+      "F3 AB",               // repe stosd
+      "80 3D ?? ?? ?? ?? 00" // cmp byte ptr [target],00
+    ));
+    if (ptr != IntPtr.Zero) {
+      speedrunIsLive = game.ReadValue<int>(ptr) - (int)game.Modules[0].BaseAddress;
+      timerBase = game.ReadValue<int>(ptr + 0xD) - (int)game.Modules[0].BaseAddress;
     }
   }
   if (fezGame == 0) {
-    print("Couldn't find FezGame!");
+    throw new Exception("Couldn't find FezGame!");
   } else {
     print("Found FezGame at 0x" + fezGame.ToString("X"));
   }
+  if (speedrunIsLive == 0 || timerBase == 0) {
+    throw new Exception("Couldn't find speedrunIsLive / timerBase!");
+  } else {
+    print("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
+    print("Found timerBase at 0x" + timerBase.ToString("X"));
+  }
   
-  vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(fezGame + 0x38, 0x4));
-  vars.timerStart = new MemoryWatcher<long>(new DeepPointer(fezGame + 0x38, 0xC));
-  vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(fezGame + 0x38, 0x14));
+  vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
+  vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
+  vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
+  vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
+  
+  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
   vars.level = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
   vars.gameTime = 0.0;
-
-  // TODO: These should work for auto start & death count
-  vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(0x0));
-  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
-  /*
-    SigScanTarget(0,
-      "33 C0",                // xor eax,eax
-      "F3 AB",                // repe stosd
-      "80 3D ?? ?? ?? ?? 00", // cmp byte ptr [XXXX57EC],00
-      "0F 84 ?? ?? 00 00",    // je FezGame.SpeedRun::Draw+339
-      "8B 0D ?? ?? ?? ??",    // mov ecx,[XXXX3514]
-      "38 01"                 // cmp [ecx],al
-    );
-    vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(scanPtr1 + 0x6, 0x0));
-  */
+  vars.runStarting = false;
   
   vars.watchers = new MemoryWatcherList() {
     vars.speedrunIsLive,
@@ -105,23 +111,27 @@ update {
 }
 
 start {
-  if (vars.speedrunIsLive.Current && vars.timerEnabled.Current) {
+  if (!vars.speedrunIsLive.Old && vars.speedrunIsLive.Current) {
+    vars.runStarting = true;
+  }
+  if (vars.runStarting && vars.timerEnabled.Current) {
+    print("Starting run");
     vars.deathCount = 0;
+    vars.runStarting = false;
     return true;
   }
 }
 
 reset {
-  // TODO: Re-enable once this variable is done
-  /*if (!vars.speedrunIsLive.Current) {
+  if (vars.speedrunIsLive.Old && !vars.speedrunIsLive.Current) {
     print("Reset run");
     return true;
-  }*/
+  }
 }
 
 split {
   if (vars.level.Changed) {
-    print("[Autosplitter] Door Transition: " + vars.level.Old + " -> " + vars.level.Current);
+    print("Changed level from " + vars.level.Old + " to " + vars.level.Current);
     if (settings["all_levels"]) {
       return true;
     }
@@ -158,7 +168,7 @@ gameTime {
   if (vars.timerEnabled.Current)
   {
     var oldGameTime = vars.gameTime;
-    var elapsedTicks = Stopwatch.GetTimestamp() - vars.timerStart.Current + vars.timerElapsed.Current;;
+    var elapsedTicks = Stopwatch.GetTimestamp() - vars.timerStart.Current + vars.timerElapsed.Current;
     // 10,000,000: Number of ticks in a second
     vars.gameTime = elapsedTicks * 10000000 / Stopwatch.Frequency;
     if (Math.Abs(vars.gameTime - oldGameTime) > 10000000) { // Time jump by > 1s
