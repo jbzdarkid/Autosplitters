@@ -1,17 +1,13 @@
 state("witness64_d3d11") {}
-// TODO:
+// Broken (and won't fix?)
 // Town RGB blue is masked by red
 // Bunker floor 2 is masked by 5
 // Unable to differentiate Mountain blue before/after elevator
 // Windmill deactivate -> Find door
 // Keep Green EP masks non-EP
-
-// PIP should be auto-detected
-// Boat map needs work
-// split name duplication needs work
-// Reset as part of restarting?
+// Some way to reset (restarting game?)
 // Fix cinema (and probably challenge start)
-// Verify short/long sewer ep
+// Use actual picture numbers rather than internal count
 
 startup {
   settings.Add("Loaded", true);
@@ -960,7 +956,7 @@ init {
 
 </Run>";
 
-  Dictionary<string, int> panelCounts = new Dictionary<string, int>();
+  var panelCounts = new Dictionary<int, int>();
   vars.epStates = new Dictionary<int, MemoryWatcher<int>>();
   foreach (var pair in epNames) {
     int id = pair.Key;
@@ -1297,55 +1293,58 @@ init {
           break;
         }
       }
-      if ((377 <= source && source <= 381) ||
-          (168 <= source && source <= 171)) {
-        suffix = "_swamp_QS";
-        name = "Quickstop";
+      if ((338 <= source && source <= 342) ||
+          (117 <= source && source <= 123)) {
+        suffix = "_quarry_swamp";
+        name = "Boat to Swamp";
+        if (length > 60) suffix += "_100";
       }
       if ((154 <= source && source <= 167) ||
           (272 <= source && source <= 277)) {
         suffix = "_sgEP_quarry";
         name = "Boat to Quarry";
       }
-      if ((338 <= source && source <= 342) ||
-          (117 <= source && source <= 123)) {
-        suffix = "_quarry_swamp";
+      if (120 <= source && source <= 130) {
+        suffix = "_suEP_swamp";
         name = "Boat to Swamp";
-        if (length > 90) suffix += "_100";
       }
-          
-      print(""+source);
-      /*
-      } else if (length == 30) {
-        suffix = "_jungle_swamp";
-        name = "Boat to Swamp";
-      } else if (length == 59) {
-        suffix = "_treehouse_quarry";
-        name = "Boat to Quarry";
-      } else if (length == 193 || length == 197) {
+      if ((377 <= source && source <= 381) ||
+          (168 <= source && source <= 171)) {
+        if (length < 20) {
+          suffix = "_swamp_QS";
+          name = "Quickstop";
+        } else { // Couch EP
+          suffix = "_treehouse_quarry";
+          name = "Boat to Quarry";
+        }
+      }
+      if ((192 <= source && source <= 195) ||
+          (365 <= source && source <= 369)) {
         suffix = "_swamp_jungle";
         name = "Boat to Jungle";
       }
-      } else if (127 <= source && source <= 130) {
-        suffix = "_suEP_swamp";
+      // Enter post-game
+      if (358 <= source && source <= 362) {
+        suffix = "_jungle_swamp";
         name = "Boat to Swamp";
-      } else if (106 <= source && source <= 108) {
+      }
+      if (100 <= source && source <= 110) {
         suffix = "_ymEP_symm";
         name = "Boat to Symmetry";
-      } else if (110 <= source && source <= 111) {
+      }
+      if (8 <= source && source <= 16) {
         suffix = "_trEP_jungle";
         name = "Boat to Jungle";
-      } else if (336 <= source && source <= 337) {
+      }
+      if ((328 <= source && source <= 337) ||
+          (390 <= source && source <= 394)) {
         suffix = "_lsEP_quarry";
         name = "Boat to Quarry";
-      } else if (source == 6) {
-        suffix = "_lsEP_quarry";
-        name = "Boat to Quarry";
-      } else if (83 <= source && source <= 86) {
+      }
+      if (82 <= source && source <= 94) {
         suffix = "_dEP_jungle";
         name = "Boat to Jungle";
       }
-      */
       break;
     case 0x34C80: // Boat Speed
       return false;
@@ -1361,16 +1360,16 @@ init {
       name = "{" + macroSplits[panel] + "}" + name;
       macroSplits.Remove(panel);
     } else if (panel == 0x34D97 && (suffix == "_quarry_swamp" || suffix == "_quarry_swamp_100")) {
-      name = "{" + macroSplits[panel] + "}" + name;
-      macroSplits.Remove(panel);
+      name = "{Boat to Swamp}";
+      if (macroSplits.ContainsKey(panel)) macroSplits.Remove(panel);
     } else {
       name = "-" + name;
     }
-    if (panelCounts.ContainsKey(name)) {
-      panelCounts[name]++;
-      name += " (" + panelCounts[name] + ")";
+    if (panelCounts.ContainsKey(panel)) {
+      panelCounts[panel]++;
+      name += " (" + panelCounts[panel] + ")";
     } else {
-      panelCounts[name] = 1;
+      panelCounts[panel] = 1;
     }
     if (state != 2) {
       splits += "<Segment><Name>" + name + "</Name><SplitTimes /><BestSegmentTime /><SegmentHistory /></Segment>\r\n";
