@@ -6,7 +6,12 @@ state("witness64_d3d11") {}
 // Windmill deactivate -> Find door
 // Keep Green EP masks non-EP
 
-// Discards need renaming (here)
+// PIP should be auto-detected
+// Boat map needs work
+// split name duplication needs work
+// Reset as part of restarting?
+// Fix cinema (and probably challenge start)
+// Verify short/long sewer ep
 
 startup {
   settings.Add("Loaded", true);
@@ -150,6 +155,20 @@ init {
   vars.playerY = new MemoryWatcher<float>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr) + 4
   ));
+  
+  // get_panel_color_cycle_factors()
+  ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
+    "83 FA 02",           // cmp edx, 02
+    "7F 3B",              // jg get_panel_color_cycle_factors + A9
+    "F2 0F10 05 ????????" // movsd xmm0, [Core::time_info+10]
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find time!");
+  }
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.time = new MemoryWatcher<double>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr)
+  ));
 
   Func<int, int, DeepPointer> createPointer = (int puzzle, int offset) => {
     return new DeepPointer(basePointer, 0x18, (puzzle-1)*8, offset);
@@ -258,8 +277,8 @@ init {
     {0x0A305, "Right Sliding Bridge"},
     {0x0A40A, "Stone Wall"},
     {0x17CBA, "Railroad"},
-    {0x220A8, "Long Bridge"},
-    {0x220BE, "Short Bridge"},
+    {0x220A8, "Short Bridge"},
+    {0x220BE, "Long Bridge"},
     {0x220E5, "Broken Wall Straight"},
     {0x220E6, "Broken Wall Bend"},
     {0x22107, "Desert"},
@@ -535,10 +554,10 @@ init {
     {0x021D7, "Mountainside Shortcut"},
     {0x02886, "Door 2"},
     {0x0288C, "Door 1"},
-    {0x032F5, "Town Laser"},
+    {0x032F5, "Laser"},
     {0x032F7, "Apple Tree 4"},
     {0x032FF, "Apple Tree 5"},
-    {0x03317, "Keep Back Laser"},
+    {0x03317, "Back Laser"},
     {0x0339E, "Desert Vault Box"},
     {0x033D4, "Tutorial Vault"},
     {0x033EA, "Yellow Pressure Plates"},
@@ -559,13 +578,13 @@ init {
     {0x03552, "Desert Video"},
     {0x03553, "Tutorial Video"},
     {0x0356B, "Challenge Vault Box"},
-    {0x03608, "Desert Laser"},
-    {0x0360D, "Symmetry Laser"},
-    {0x0360E, "Keep Front Laser"},
+    {0x03608, "Laser"},
+    {0x0360D, "Laser"},
+    {0x0360E, "Front Laser"},
     {0x03612, "Quarry Laser"},
-    {0x03613, "Treehouse Laser"},
-    {0x03615, "Swamp Laser"},
-    {0x03616, "Jungle Laser"},
+    {0x03613, "Laser"},
+    {0x03615, "Laser"},
+    {0x03616, "Laser"},
     {0x0361B, "Tower Shortcut"},
     {0x03629, "Gate Open"},
     {0x03675, "Upper Lift Control"},
@@ -602,7 +621,7 @@ init {
     {0x09DB5, "Erasers and Stars 5"},
     {0x09DB8, "Summon Boat"},
     {0x09DD5, "Challenge Pillar"},
-    {0x09DE0, "Bunker Laser"},
+    {0x09DE0, "Laser"},
     {0x09E39, "Purple Pathway"},
     {0x09E49, "Shadows Shortcut"},
     {0x09E56, "Right Pillar 2"},
@@ -712,7 +731,7 @@ init {
     {0x17C42, "Mountainside Discard"},
     {0x17C71, "Rooftop Discard"},
     {0x17C95, "Summon Boat"},
-    {0x17CA4, "Monastery Laser"},
+    {0x17CA4, "Laser"},
     {0x17CA6, "Summon Boat"},
     {0x17CAA, "Courtyard Gate"},
     {0x17CAB, "Pop-up Wall"},
@@ -791,7 +810,7 @@ init {
     {0x17ECA, "Flood 5"},
     {0x17F5F, "Windmill Door"},
     {0x17F89, "Entrance"},
-    {0x17F93, "Elevator Discard"},
+    {0x17F93, "Mountain Discard"},
     {0x17F9B, "Jungle Discard"},
     {0x17FA0, "Laser Discard"},
     {0x17FA2, "Secret Door"},
@@ -812,7 +831,7 @@ init {
     {0x193A7, "Interior 1"},
     {0x193AA, "Interior 2"},
     {0x193AB, "Interior 3"},
-    {0x19650, "Shadows Laser"},
+    {0x19650, "Laser"},
     {0x196E2, "Avoid 3"},
     {0x196F8, "Avoid 7"},
     {0x1972A, "Avoid 4"},
@@ -886,7 +905,7 @@ init {
     {0x34BC6, "Close Ultraviolet"},
     {0x34C7F, "Boat Speed"},
     {0x34D96, "Boat Map"},
-    {0x38663, "Gate Control"},
+    {0x38663, "Shortcut Snipe"},
     {0x386FA, "Avoid 1"},
     {0x3C113, "Open Door"},
     {0x3C114, "Open Door"},
@@ -902,7 +921,7 @@ init {
   };
   Dictionary<int, string> macroSplits = new Dictionary<int, string>{
     {0x032F6, "Town"},
-    {0x0354A, "Eclipse Start"},
+    {0x0354A, "Theater"},
     {0x03609, "Desert"},
     {0x0360E, "Symmetry"},
     {0x0360F, "Keep"},
@@ -913,12 +932,12 @@ init {
     {0x09E7C, "Mountain Floor 1"},
     {0x09EEC, "Mountain Floor 2"},
     {0x0A07A, "Bunker Elevator"},
-    {0x0A333, "Challenge Start"},
+    {0x0A333, "Under the Mountain"},
     {0x17CA5, "Monastery"},
     {0x19651, "Shadows"},
-    {0x1C31A, "Challenge End"},
-    {0x22107, "523 + 135 + 6"},
-    {0x33A21, "Eclipse End"},
+    {0x1C31A, "Challenge"},
+    {0x22107, "523 +135 +6"},
+    {0x33A21, "Eclipse"},
     {0x34D97, "Boat to Swamp"},
     {0x3D9AA, "Wonkavator"},
   };
@@ -978,7 +997,7 @@ init {
         name += " Right";
       }
       break;
-    case 0x00816: // Cinema Control
+    case 0x00816: // Theater Control
       if (length == 13) panel = 0x03554; // Tutorial
       if (length == 11) panel = 0x03553; // Desert
       if (length == 27) panel = 0x0354F; // Jungle
@@ -1102,6 +1121,7 @@ init {
       if (vars.multiCount == 4) panel = 0x09FD2;
       if (vars.multiCount == 5) panel = 0x09FD3;
       vars.multiCount++;
+      name += ' ' + vars.multiCount.ToString();
       break;
     case 0x0A07A: // Bunker Elevator
       if (state == 2) {
@@ -1115,13 +1135,18 @@ init {
         if (length == 26) suffix = "_6";
       }
       break;
-    case 0x0A3B5: // Tutorial Back Left
+    case 0x0A3B6: // Tutorial Back Left
       if (length == 15) suffix = "_1";
       if (length == 25) suffix = "";
       break;
     case 0x0C374: // Tutorial Flowers
       if (state == 1) suffix = "";
       if (state == 2) suffix = "_ep";
+      break;
+    case 0x17C0B: // Swamp Island Control
+      if (vars.swampIslandCount == 0) suffix = "_1";
+      if (vars.swampIslandCount == 1) suffix = "_2";
+      vars.swampIslandCount++;
       break;
     case 0x17C35: // Mountaintop Crazyhorse
       if (length == 18) suffix = "_l_r";
@@ -1140,6 +1165,13 @@ init {
         suffix = "_r";
         name += " Right";
       }
+      if (vars.playerX.Current < 110) suffix += "_far";
+      break;
+    case 0x17CF1: // Mill Discard
+      if (vars.playerX.Current > -50) suffix = "_far";
+      break;
+    case 0x17D29: // Shipwreck Discard
+      if (vars.playerY.Current > 210) suffix = "_far";
       break;
     case 0x17DB8: // Right Orange Bridge Pivot 2
       target = createPointer(0x0362D, bridgeTargetB).Deref<float>(game);
@@ -1167,11 +1199,6 @@ init {
         name += " Right";
       }
       break;
-    case 0x17C0B: // Swamp Island Control
-      if (vars.swampIslandCount == 0) suffix = "_1";
-      if (vars.swampIslandCount == 1) suffix = "_2";
-      vars.swampIslandCount++;
-      break;
     case 0x17E2C: // Swamp Flood Gate Control
       target = createPointer(0x17E75, doorTarget).Deref<float>(game); // Near Bridge
       if (target == 1) {
@@ -1194,6 +1221,13 @@ init {
         suffix = "_r";
         name += " Right";
       }
+      break;
+    case 0x17FA1: // Treehouse Laser Discard
+      if (vars.playerX.Current > 115) suffix = "_far"; // All Discarded Panels snipe
+      else if (vars.playerX.Current > 105) suffix = "_near"; // 100% snipe
+      break;
+    case 0x17FAA: // Treehouse Green Bridge Discard
+      if (vars.playerX.Current < 125) suffix = "_far";
       break;
     case 0x181F6: // Swamp Rotating Bridge Control
       curr = createPointer(0x005A3, doorCurrent).Deref<float>(game);
@@ -1255,12 +1289,33 @@ init {
     case 0x34D97: // Boat Map
       Thread.Sleep(2000); // Wait 2s for the boat to stop
       length = createPointer(0x31, boatLength).Deref<int>(game);
-      if (length == 89) {
+      int source = 0;
+      for (int i=0; i<length; i++) {
+        var waypoint = (new DeepPointer(basePointer, 0x18, 0x30*8, waypointOffset, i*4)).Deref<int>(game);
+        if (waypoint != -1) {
+          source = waypoint;
+          break;
+        }
+      }
+      if ((377 <= source && source <= 381) ||
+          (168 <= source && source <= 171)) {
+        suffix = "_swamp_QS";
+        name = "Quickstop";
+      }
+      if ((154 <= source && source <= 167) ||
+          (272 <= source && source <= 277)) {
+        suffix = "_sgEP_quarry";
+        name = "Boat to Quarry";
+      }
+      if ((338 <= source && source <= 342) ||
+          (117 <= source && source <= 123)) {
         suffix = "_quarry_swamp";
         name = "Boat to Swamp";
-      } else if (length == 93) {
-        suffix = "_quarry_swamp_100";
-        name = "Boat to Swamp";
+        if (length > 90) suffix += "_100";
+      }
+          
+      print(""+source);
+      /*
       } else if (length == 30) {
         suffix = "_jungle_swamp";
         name = "Boat to Swamp";
@@ -1271,26 +1326,9 @@ init {
         suffix = "_swamp_jungle";
         name = "Boat to Jungle";
       }
-      int source = 0;
-      for (int i=0; i<length; i++) {
-        var waypoint = (new DeepPointer(basePointer, 0x18, 0x30*8, waypointOffset, i*4)).Deref<int>(game);
-        if (waypoint != -1) {
-          source = waypoint;
-          break;
-        }
-      }
-      if (161 <= source && source <= 165) {
-        suffix = "_sgEP_quarry";
-        name = "Boat to Quarry";
       } else if (127 <= source && source <= 130) {
         suffix = "_suEP_swamp";
         name = "Boat to Swamp";
-      } else if (274 <= source && source <= 277) {
-        suffix = "_swamp_QS"; // Maybe wrong
-        name = "Quickstop";
-      } else if (168 <= source && source <= 171) {
-        suffix = "_swamp_QS"; // Maybe wrong
-        name = "Quickstop";
       } else if (106 <= source && source <= 108) {
         suffix = "_ymEP_symm";
         name = "Boat to Symmetry";
@@ -1307,9 +1345,16 @@ init {
         suffix = "_dEP_jungle";
         name = "Boat to Jungle";
       }
+      */
       break;
     case 0x34C80: // Boat Speed
       return false;
+    case 0x38664: // Boathouse Shortcut (snipe)
+      if (Math.Round(vars.playerX.Current, 1) == -61.8
+       && Math.Round(vars.playerY.Current, 1) == 159.8) {
+        suffix = "_far";
+      }
+      break;
     }
     
     if (macroSplits.ContainsKey(panel)) {
@@ -1351,10 +1396,14 @@ init {
 
 update {
   if (!vars.initDone) return;
+  // Don't run if the game is loading / paused
+  vars.time.Update(game);
+  if (vars.time.Current <= vars.time.Old) return false;
   vars.puzzle.Update(game);
   vars.playerX.Update(game);
   vars.playerY.Update(game);
   vars.keepWatchers.UpdateAll(game);
+
   
   // Started a new panel
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
@@ -1363,7 +1412,7 @@ update {
   }
   // Exited a panel (or EP)
   if (vars.puzzle.Old != 0 && vars.puzzle.Current == 0) {
-    print(vars.puzzle.Old+" "+vars.puzzle.Current);
+    print(vars.playerX.Current + " " + vars.playerY.Current);
     foreach (var pair in vars.epStates) {
       if (pair.Value.Current == 0) {
         pair.Value.Update(game);
@@ -1396,7 +1445,7 @@ update {
   if (state == 1) {
     vars.onPanelExited(vars.activePanel, state);
   }
-  // Cinema panel + Challenge start
+  // Theater panel + Challenge start
   if (state == 3 && (vars.activePanel == 0x00815 || vars.activePanel == 0x0A333)) {
     vars.onPanelExited(vars.activePanel, state);
   }
