@@ -73,8 +73,8 @@ init {
   vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
   
   vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
-  vars.level = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
-  vars.gameTime = 0.0;
+  vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
+  vars.gameTime = 0;
   vars.runStarting = false;
   
   vars.watchers = new MemoryWatcherList() {
@@ -83,7 +83,7 @@ init {
     vars.timerStart,
     vars.timerEnabled,
     vars.gomezAction,
-    vars.level,
+    vars.levelWatcher,
   };
   
   vars.deathCount = 0;
@@ -100,6 +100,7 @@ init {
       }
     }
   }
+  vars.levels = new List<string> {"ABANDONED_A", "ABANDONED_B", "ABANDONED_C", "ANCIENT_WALLS", "ARCH", "BELL_TOWER", "BIG_OWL", "BIG_TOWER", "BOILEROOM", "CABIN_INTERIOR_A", "CABIN_INTERIOR_B", "CLOCK", "CMY", "CMY_B", "CMY_FORK", "CODE_MACHINE", "CRYPT", "DRUM", "ELDERS", "EXTRACTOR_A", "FIVE_TOWERS", "FIVE_TOWERS_CAVE", "FOX", "FRACTAL", "GEEZER_HOUSE", "GEEZER_HOUSE_2D", "GLOBE", "GLOBE_INT", "GOMEZ_HOUSE", "GOMEZ_HOUSE_2D", "GOMEZ_HOUSE_END_32", "GOMEZ_HOUSE_END_64", "GRAVE_CABIN", "GRAVE_GHOST", "GRAVE_LESSER_GATE", "GRAVE_TREASURE_A", "GRAVEYARD_A", "GRAVEYARD_GATE", "HEX_REBUILD", "INDUST_ABANDONED_A", "INDUSTRIAL_CITY", "INDUSTRIAL_HUB", "INDUSTRIAL_SUPERSPIN", "KITCHEN", "KITCHEN_2D", "LAVA", "LAVA_FORK", "LAVA_SKULL", "LIBRARY_INTERIOR", "LIGHTHOUSE", "LIGHTHOUSE_HOUSE_A", "LIGHTHOUSE_SPIN", "MAUSOLEUM", "MEMORY_CORE", "MINE_A", "MINE_BOMB_PILLAR", "MINE_WRAP", "NATURE_HUB", "NUZU_ABANDONED_A", "NUZU_ABANDONED_B", "NUZU_BOILERROOM", "NUZU_DORM", "NUZU_SCHOOL", "OBSERVATORY", "OCTOHEAHEDRON", "OLDSCHOOL", "OLDSCHOOL_RUINS", "ORRERY", "ORRERY_B", "OWL", "PARLOR", "PARLOR_2D", "PIVOT_ONE", "PIVOT_THREE", "PIVOT_THREE_CAVE", "PIVOT_TWO", "PIVOT_WATERTOWER", "PURPLE_LODGE", "PURPLE_LODGE_RUIN", "PYRAMID", "QUANTUM", "RAILS", "RITUAL", "SCHOOL", "SCHOOL_2D", "SEWER_FORK", "SEWER_GEYSER", "SEWER_HUB", "SEWER_LESSER_GATE_B", "SEWER_PILLARS", "SEWER_PIVOT", "SEWER_QR", "SEWER_START", "SEWER_TO_LAVA", "SEWER_TREASURE_ONE", "SEWER_TREASURE_TWO", "SHOWERS", "SKULL", "SKULL_B", "SPINNING_PLATES", "STARGATE", "STARGATE_RUINS", "SUPERSPIN_CAVE", "TELESCOPE", "TEMPLE_OF_LOVE", "THRONE", "TREE", "TREE_CRUMBLE", "TREE_OF_DEATH", "TREE_ROOTS", "TREE_SKY", "TRIAL", "TRIPLE_PIVOT_CAVE", "TWO_WALLS", "VILLAGEVILLE_2D", "VILLAGEVILLE_3D", "VILLAGEVILLE_3D_END_32", "VILLAGEVILLE_3D_END_64", "VISITOR", "WALL_HOLE", "WALL_INTERIOR_A", "WALL_INTERIOR_B", "WALL_INTERIOR_HOLE", "WALL_KITCHEN", "WALL_SCHOOL", "WALL_VILLAGE", "WATER_PYRAMID", "WATER_TOWER", "WATER_WHEEL", "WATER_WHEEL_B", "WATERFALL", "WATERFALL_ALT", "WATERTOWER_SECRET", "WEIGHTSWITCH_TEMPLE", "WELL_2", "WINDMILL_CAVE", "WINDMILL_INT", "ZU_4_SIDE", "ZU_BRIDGE", "ZU_CITY", "ZU_CITY_RUINS", "ZU_CODE_LOOP", "ZU_FORK", "ZU_HEADS", "ZU_HOUSE_EMPTY", "ZU_HOUSE_EMPTY_B", "ZU_HOUSE_QR", "ZU_HOUSE_RUIN_GATE", "ZU_HOUSE_RUIN_VISITORS", "ZU_HOUSE_SCAFFOLDING", "ZU_LIBRARY", "ZU_SWITCH", "ZU_SWITCH_B", "ZU_TETRIS", "ZU_THRONE_RUINS", "ZU_UNFOLD", "ZU_ZUISH"};
 }
 
 update {
@@ -117,6 +118,8 @@ start {
   if (vars.runStarting && vars.timerEnabled.Current) {
     print("Starting run");
     vars.deathCount = 0;
+    vars.gameTime = 0;
+    vars.level = "GOMEZ_HOUSE_2D";
     vars.runStarting = false;
     return true;
   }
@@ -130,27 +133,32 @@ reset {
 }
 
 split {
-  if (vars.level.Changed) {
-    print("Changed level from " + vars.level.Old + " to " + vars.level.Current);
-    if (settings["all_levels"]) {
-      return true;
-    }
-    if (vars.level.Old == "MEMORY_CORE" && vars.level.Current == "NATURE_HUB") {
-      return settings["village"];
-    } else if (vars.level.Old == "TWO_WALLS" && vars.level.Current == "NATURE_HUB") {
-      return settings["bellTower"];
-    } else if (vars.level.Old == "PIVOT_WATERTOWER" && vars.level.Current == "MEMORY_CORE") {
-      return settings["lighthouse"];
-    } else if (vars.level.Old == "ZU_BRIDGE" && vars.level.Current == "ZU_CITY_RUINS") {
-      return settings["tree"];
-    } else if (vars.level.Old == "GOMEZ_HOUSE_END_32" && vars.level.Current == "VILLAGEVILLE_3D_END_32") {
-      return settings["ending32"];
-    } else if (vars.level.Old == "CMY_B" && vars.level.Current == "NATURE_HUB") {
-      return settings["waterfall"];
-    } else if (vars.level.Old == "FIVE_TOWERS" && vars.level.Current == "NATURE_HUB") {
-      return settings["arch"];
-    } else if (vars.level.Old == "VISITOR" && vars.level.Current == "ZU_CITY_RUINS") {
-      return settings["zu"];
+  if (vars.levelWatcher.Changed) {
+    string oldLevel = vars.level;
+    string newLevel = vars.levelWatcher.Current;
+    if (vars.levels.Contains(newLevel) && oldLevel != newLevel) {
+      print("Changed level from " + oldLevel + " to " + newLevel);
+      vars.level = newLevel;
+      if (settings["all_levels"]) {
+        return true;
+      }
+      if (oldLevel == "MEMORY_CORE" && newLevel == "NATURE_HUB") {
+        return settings["village"];
+      } else if (oldLevel == "TWO_WALLS" && newLevel == "NATURE_HUB") {
+        return settings["bellTower"];
+      } else if (oldLevel == "PIVOT_WATERTOWER" && newLevel == "MEMORY_CORE") {
+        return settings["lighthouse"];
+      } else if (oldLevel == "ZU_BRIDGE" && newLevel == "ZU_CITY_RUINS") {
+        return settings["tree"];
+      } else if (oldLevel == "GOMEZ_HOUSE_END_32" && newLevel == "VILLAGEVILLE_3D_END_32") {
+        return settings["ending32"];
+      } else if (oldLevel == "CMY_B" && newLevel == "NATURE_HUB") {
+        return settings["waterfall"];
+      } else if (oldLevel == "FIVE_TOWERS" && newLevel == "NATURE_HUB") {
+        return settings["arch"];
+      } else if (oldLevel == "VISITOR" && newLevel == "ZU_CITY_RUINS") {
+        return settings["zu"];
+      }
     }
   }
   if (vars.gomezAction.Changed) {
@@ -167,14 +175,14 @@ isLoading {
 gameTime {
   if (vars.timerEnabled.Current)
   {
-    var oldGameTime = vars.gameTime;
     var elapsedTicks = Stopwatch.GetTimestamp() - vars.timerStart.Current + vars.timerElapsed.Current;
     // 10,000,000: Number of ticks in a second
-    vars.gameTime = elapsedTicks * 10000000 / Stopwatch.Frequency;
-    if (Math.Abs(vars.gameTime - oldGameTime) > 10000000) { // Time jump by > 1s
+    var newGameTime = elapsedTicks * 10000000 / Stopwatch.Frequency;
+    if (Math.Abs(newGameTime - vars.gameTime) > 10000000) { // Time jump by > 1s
       print("Gametime jumped by >1s, waiting for a more stable value.");
-      print("Old gametime: " + oldGameTime + " New gametime: " + vars.gameTime);
-      return false; // TODO: Throws an error?
+      print("Old gametime: " + vars.gameTime + " New gametime: " + newGameTime);
+    } else {
+      vars.gameTime = newGameTime;
     }
     return new TimeSpan(vars.gameTime);
   }
