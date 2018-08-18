@@ -1,5 +1,8 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
+// TODO: Handle challenge start the same as theater input, and get rid of the sigscan
+// TODO: Configuration file... somewhere. Should also support EPs if possible. Versioning is a good idea. Json might also be a good idea.
+// Starts splitting on every panel after challenge (even if split on panels isn't set)
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -83,6 +86,8 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
+  
+  settings.Add("Split based on configuration file", false);
 }
 
 init {
@@ -177,14 +182,35 @@ init {
     basePointer, 0x18, 0xBFF*8, recordPowerOffset
   ));
   
+  // Entity_Door::update()
+  ptr = scanner.Scan(new SigScanTarget(4,
+    "F3 0F10 8B ????????", // movss xmm1, [rbx + target1]
+    "F3 0F10 83 ????????", // movss xmm1, [rbx + target2]
+    "48 89 BC 24 ????????" // mov [rsp+??], rdi
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find door offsets!");
+  }
+  vars.doorCurrent = game.ReadValue<int>(ptr);
+  vars.doorTarget = game.ReadValue<int>(ptr+8);
+
+  // Entity_Obelisk_Report::light_up
+  ptr = scanner.Scan(new SigScanTarget(3,
+    "C3",                      // ret
+    "C7 81 ???????? 01000000", // mov [rcx+offset], 1
+    "48 83 C4 20"              // add rsp, 20
+  ));
+  vars.epOffset = game.ReadValue<int>(ptr);
+  
   print(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
     + " | Door offset: "+doorOffset.ToString("X")
+    + " | Door current: "+vars.doorCurrent.ToString("X")
+    + " | Door target: "+vars.doorTarget.ToString("X")
     + " | Record Power offset: "+recordPowerOffset.ToString("X")
-    // + " | Panel name offset: "+vars.panelNameOffset.ToString("X")
-    // + " | EP name offset: "+vars.epNameOffset.ToString("X")
+    + " | EP offset: "+vars.epOffset.ToString("X")
   );
 
   // get_panel_color_cycle_factors()
@@ -250,23 +276,23 @@ init {
   // do_focus_mode_left_mouse_press()
   // 8B 05 ???????? 85 C0 74 5B
 
-  Func<int, int, DeepPointer> createPointer = (int puzzle, int offset) => {
-    return new DeepPointer(basePointer, 0x18, (puzzle-1)*8, offset);
+  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
+    return new DeepPointer(basePointer, 0x18, id*8, offset);
   };
   // First panel in the game
-  int panelType = createPointer(0x65, 0x8).Deref<int>(game);
+  int panelType = createPointer(0x64, 0x8).Deref<int>(game);
   if (panelType == 0) {
     throw new Exception("Couldn't find panel type!");
   }
   print("Panel type: 0x"+panelType.ToString("X"));
   vars.addPanel = (Action<int, int, int>)((int panel, int maxSolves, int offset) => {
     if (!vars.panels.ContainsKey(panel)) {
-      int type = createPointer(panel, 0x8).Deref<int>(game);
+      int type = createPointer(panel-1, 0x8).Deref<int>(game);
       if (type == panelType) {
         vars.panels[panel] = new Tuple<int, int, DeepPointer>(
           0,         // Number of times solved
           maxSolves, // Number of times to split
-          createPointer(panel, offset)
+          createPointer(panel-1, offset)
         );
       }
     }
@@ -276,10 +302,11 @@ init {
   vars.obeliskWatchers = new MemoryWatcherList();
   vars.keepWatchers = new MemoryWatcherList();
   vars.multiWatchers = new MemoryWatcherList();
+  vars.configWatchers = new MemoryWatcherList();
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
-      vars.obeliskWatchers.Add(new MemoryWatcher<int>(createPointer(obelisk, obeliskOffset)));
+      vars.obeliskWatchers.Add(new MemoryWatcher<int>(createPointer(obelisk-1, obeliskOffset)));
     }
   }
 
@@ -291,19 +318,74 @@ init {
     if (settings["Split on all panels (solving and non-solving)"]) {
       vars.keepWatchers = new MemoryWatcherList();
       foreach (var panel in vars.keepWalkOns) {
-        vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
+        vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.solvedOffset)));
       }
       vars.keepWatchers.UpdateAll(game);
       vars.multiWatchers = new MemoryWatcherList();
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0, vars.solvedOffset);
-        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
+        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.completedOffset)));
       }
       vars.multiWatchers.UpdateAll(game);
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
       foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999, vars.solvedOffset);
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0, vars.completedOffset);
+
+
+
+
+
+
+
+
+
+
+
+
+
+    } else if (settings["Split based on configuration file"]) {
+      vars.configWatchers = new MemoryWatcherList();
+      string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\witness_config.txt");
+
+      string mode = "";
+      int version = 0;
+      foreach (var line in lines) {
+        if (line.Contains(':')) {
+          var parts = line.Split(':');
+          mode = parts[0];
+          if (mode == "version") version = Int32.Parse(parts[1]);
+          continue;
+        }
+        var unparsed = line.Split('#')[0];
+        if (unparsed == "") continue;
+        int id = Convert.ToInt32(unparsed.Trim(), 16);
+        if (mode == "panels") {
+          vars.configWatchers.Add(new MemoryWatcher<int>(
+            createPointer(id, vars.completedOffset)));
+        }
+        if (mode == "eps") {
+          vars.configWatchers.Add(new MemoryWatcher<int>(
+            createPointer(id, vars.epOffset)));
+        }
+        if (mode == "doors") {
+          vars.configWatchers.Add(new MemoryWatcher<float>(
+            createPointer(id, vars.doorOffset)));
+        }
+        print("Watching: 0x" + id.ToString("X"));
+      }
+      vars.configWatchers.UpdateAll(game);
+
+
+
+
+
+
+
+
+
+
+
     } else {
       // Individual panels use the completed offset, since they just need to be completed the first time you exit them
       if (settings["Split on lasers"]) {
@@ -413,6 +495,7 @@ update {
   vars.keepWatchers.UpdateAll(game);
   vars.multiWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
+  vars.configWatchers.UpdateAll(game);
 
   if (settings["Enable random doors practice"] != vars.randomDoorsState) {
     print(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
@@ -520,6 +603,13 @@ split {
       vars.activePanel = 0;
     }
   }
+  foreach (var configWatch in vars.configWatchers) {
+    if (configWatch.Old == 0 && configWatch.Current == 1) {
+      return true;
+    }
+  }
+
+  // TODO: Much of this is unneeded w/ config
   if (settings["Split on all panels (solving and non-solving)"]) {
     // Challenge starting panel unsolves itself
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
