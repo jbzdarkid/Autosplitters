@@ -33,6 +33,18 @@ startup {
   settings.Add("Split when exiting the Braid level", false);
   settings.Add("Split when exiting lobby levels", false);
   settings.Add("Split when exiting the house", false);
+
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_braid.log";
+  vars.log = (Action<string>)((string logLine) => {
+    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  try {
+    vars.log("Autosplitter loaded");
+  } catch (System.IO.FileNotFoundException e) {
+    File.Create(vars.logFilePath);
+    vars.log("Autosplitter loaded, log file created");
+  }
 }
 
 init {
@@ -40,14 +52,17 @@ init {
   if (modules.First().ModuleMemorySize == 7663616) {
     version = "steam";
     vars.piecesBase = 0x1F829C;
+    vars.log("Using steam version");
   }
   if (modules.First().ModuleMemorySize == 7639040) {
     version = "standalone";
     vars.piecesBase = 0x1F221C;
+    vars.log("Using standalone version");
   }
   if (modules.First().ModuleMemorySize == 7229440) {
     version = "kanban55";
     vars.piecesBase = 0x18CA4C;
+    vars.log("Using kanban55 version");
   }
 
   // IDs are in display order in the top left
@@ -115,6 +130,7 @@ init {
       vars.collectedPieces[vars.piecesBase + (0x18C * world) + (0x20 * piece)] = false;
     }
   }
+  vars.log("Finished initializing");
 }
 
 isLoading {
@@ -136,18 +152,22 @@ start {
       vars.completedLevels[world] = false;
     }
     return true;
+    vars.log("Started a new run");
   }
 }
 
 reset {
-  return old.gameFrames > 0 && current.gameFrames == 0;
+  if (old.gameFrames > 0 && current.gameFrames == 0) {
+    vars.log("Resetting run");
+    return true;
+  }
 }
 
 split {
   if (old.world != current.world || old.level != current.level) {
     string oldName = old.world + "-" + old.level;
     string currentName = current.world + "-" + current.level;
-    print("Changed from " + oldName + " to " + currentName);
+    vars.log("Changed from " + oldName + " to " + currentName);
 
     int missingPieces = 0;
     foreach (int piece in vars.currentPieces.Keys) {
@@ -155,7 +175,7 @@ split {
         missingPieces++;
       }
     }
-    print(oldName + " still has " + missingPieces + " missing pieces");
+    vars.log(oldName + " still has " + missingPieces + " missing pieces");
 
     // Prepare for the next level
     vars.currentPieces.Clear();
@@ -167,38 +187,49 @@ split {
     // Ensure that we don't try to split for a level again. This value will be reset
     // to false if a piece is collected in the level.
     if (vars.completedLevels[oldName] == false) {
+      vars.log("Completed " + oldName);
       vars.completedLevels[oldName] = true;
 
       if (oldName == "0-8" && currentName == "0-0") { // Exiting the Epilogue
+        vars.log("Exited the epilogue");
         return true;
       }
       if (old.world != 0 && currentName == "0-0") { // Returning to the house
+        vars.log("Returned to house");
         return settings["Split when returning to the house"];
       }
       if (oldName == "1-2" && currentName == "1-1") { // Entering Braid
+        vars.log("Entered Braid");
         return settings["Split when entering the Braid level"];
       }
       if (oldName == "1-1" && currentName == "0-8") { // Exiting Braid
+        vars.log("Exited Braid");
         return settings["Split when exiting the Braid level"];
       }
       if (oldName == "3-7" && currentName == "3-8") { // Exiting Lair (3)
+        vars.log("Exited W3 Lair");
         return settings["Split when exiting Lair in World 3"];
       }
       // missingPieces was defined above, before we cleared vars.curentPieces
       if (oldName == "2-2" && missingPieces == 2) {
+        vars.log("Exited Cloud Bridge (2 missing pieces)");
         return settings["Split when exiting The Cloud Bridge after collecting 2 pieces"];
       }
       if (oldName == "2-4" && missingPieces == 3) {
+        vars.log("Exited Leap of Faith (3 missing pieces)");
         return settings["Split when exiting Leap of Faith after collecting 1 piece"];
       }
       if (oldName == "0-0") {
         vars.completedLevels[oldName] = false;
+        vars.log("Exited the house");
         return settings["Split when exiting the house"];
       }
       if (old.world == 0) {
+        vars.log("Exited the lobby");
         return settings["Split when exiting lobby levels"];
       }
       if (missingPieces == 0) {
+        vars.log("Completed a puzzle level (0 missing pieces)");
         return settings["Split when completing and exiting a puzzle level"];
       }
     }
@@ -213,6 +244,7 @@ split {
         currentName == "4-7" ||
         currentName == "5-7" ||
         currentName == "6-7") {
+      vars.log("Touched a flagpole");
       return settings["Split when touching a flagpole"];
     }
   }
@@ -220,7 +252,7 @@ split {
   foreach (int piece in vars.currentPieces.Keys) {
     if (vars.collectedPieces[piece] == false) {
       if (vars.currentPieces[piece].Deref<bool>(game) == true) {
-        print("Collected piece 0x"+piece.ToString("X"));
+        vars.log("Collected piece 0x"+piece.ToString("X")+" in level " + current.level);
         vars.collectedPieces[piece] = true;
         // Collected a piece so the world is not complete yet
         vars.completedLevels[current.world + "-" + current.level] = false;
