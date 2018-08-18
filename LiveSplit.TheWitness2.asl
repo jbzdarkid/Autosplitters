@@ -1,7 +1,6 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
-// TODO: Configuration file... somewhere. Should also support EPs if possible. Versioning is a good idea. Json might also be a good idea.
 // Starts splitting on every panel after challenge (even if split on panels isn't set)
 
 startup {
@@ -363,16 +362,17 @@ init {
         if (mode == "panels") {
           vars.configWatchers.Add(new MemoryWatcher<int>(
             createPointer(id, vars.completedOffset)));
-        }
-        if (mode == "eps") {
+        } else if (mode == "multipanels") {
+          vars.configWatchers.Add(new MemoryWatcher<int>(
+            createPointer(id, vars.solvedOffset)));
+        } else if (mode == "eps") {
           vars.configWatchers.Add(new MemoryWatcher<int>(
             createPointer(id, vars.epOffset)));
-        }
-        if (mode == "doors") {
+        } else if (mode == "doors") {
           vars.configWatchers.Add(new MemoryWatcher<float>(
             createPointer(id, vars.doorOffset)));
         }
-        print("Watching: 0x" + id.ToString("X"));
+        print("Watching " + mode + ": 0x" + id.ToString("X"));
       }
       vars.configWatchers.UpdateAll(game);
 

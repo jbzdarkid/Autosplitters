@@ -14,6 +14,8 @@ panels:
 0x09DE0 # Bunker
 0x17CA4 # Monastery
 0x19650 # Shadows
+multipanels:
+0x079DF # Town Triple
 eps:
 0x01848 # Tutorial Hallway
 0x03D06 # Tutorial Garden
