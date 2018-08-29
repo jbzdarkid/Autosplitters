@@ -1,7 +1,6 @@
 state("FEZ") {}
 
 startup {
-  settings.Add("cubes", false, "Split on Cubes");
   settings.Add("all_levels", false, "Split when changing levels");
   
   settings.Add("anySplits", true, "Any% Splits");
@@ -38,10 +37,10 @@ init {
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
     ptr = scanner.Scan(new SigScanTarget(0,
-      "32 00 30 00 31 00 36 00 2D 00 31 00 32 00 2D 00 30 00 31" // 2016-12-01 19:39:28
+      "01 01 00 00 00 40 0D 03"
     ));
     if (ptr != IntPtr.Zero) {
-      fezGame = (int)ptr - (int)game.Modules[0].BaseAddress - 0xA0;
+      fezGame = (int)ptr - (int)modules.First().BaseAddress - 0x53;
     }
     
     // FezGame.Speedrun::Draw
@@ -51,8 +50,8 @@ init {
       "80 3D ?? ?? ?? ?? 00" // cmp byte ptr [target],00
     ));
     if (ptr != IntPtr.Zero) {
-      speedrunIsLive = game.ReadValue<int>(ptr) - (int)game.Modules[0].BaseAddress;
-      timerBase = game.ReadValue<int>(ptr + 0xD) - (int)game.Modules[0].BaseAddress;
+      speedrunIsLive = game.ReadValue<int>(ptr) - (int)modules.First().BaseAddress;
+      timerBase = game.ReadValue<int>(ptr + 0xD) - (int)modules.First().BaseAddress;
     }
   }
   if (fezGame == 0) {
