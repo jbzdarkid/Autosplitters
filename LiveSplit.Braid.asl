@@ -42,7 +42,7 @@ startup {
   try {
     vars.log("Autosplitter loaded");
   } catch (System.IO.FileNotFoundException e) {
-    File.Create(vars.logFilePath);
+    System.IO.File.Create(vars.logFilePath);
     vars.log("Autosplitter loaded, log file created");
   }
 }
@@ -151,8 +151,8 @@ start {
     foreach (string world in worlds) {
       vars.completedLevels[world] = false;
     }
-    return true;
     vars.log("Started a new run");
+    return true;
   }
 }
 
@@ -179,58 +179,65 @@ split {
 
     // Prepare for the next level
     vars.currentPieces.Clear();
-    foreach (var puzzleId in vars.pieceMap[currentName]) {
-      int address = vars.piecesBase + (0x18C * current.world) + (0x20 * puzzleId);
-      vars.currentPieces[address] = new DeepPointer(address);
+    // Kanban55 bug: 3-8 -> 3-0 -> 0-0 (but 3-0 is not a valid level)
+    if (vars.pieceMap.ContainsKey(currentName)) {
+      foreach (var puzzleId in vars.pieceMap[currentName]) {
+        int address = vars.piecesBase + (0x18C * current.world) + (0x20 * puzzleId);
+        vars.currentPieces[address] = new DeepPointer(address);
+      }
     }
 
-    // Ensure that we don't try to split for a level again. This value will be reset
-    // to false if a piece is collected in the level.
-    if (vars.completedLevels[oldName] == false) {
-      vars.log("Completed " + oldName);
-      vars.completedLevels[oldName] = true;
+    if (vars.completedLevels.ContainsKey(oldName)) {
+      vars.log("Level completion state: " + vars.completedLevels[oldName]);
+      
+      // Ensure that we don't try to split for a level again. This value will
+      // be reset to false if a piece is collected in the level.
+      if (vars.completedLevels[oldName] == false) {
+        vars.log("Completed " + oldName);
+        vars.completedLevels[oldName] = true;
 
-      if (oldName == "0-8" && currentName == "0-0") { // Exiting the Epilogue
-        vars.log("Exited the epilogue");
-        return true;
-      }
-      if (old.world != 0 && currentName == "0-0") { // Returning to the house
-        vars.log("Returned to house");
-        return settings["Split when returning to the house"];
-      }
-      if (oldName == "1-2" && currentName == "1-1") { // Entering Braid
-        vars.log("Entered Braid");
-        return settings["Split when entering the Braid level"];
-      }
-      if (oldName == "1-1" && currentName == "0-8") { // Exiting Braid
-        vars.log("Exited Braid");
-        return settings["Split when exiting the Braid level"];
-      }
-      if (oldName == "3-7" && currentName == "3-8") { // Exiting Lair (3)
-        vars.log("Exited W3 Lair");
-        return settings["Split when exiting Lair in World 3"];
-      }
-      // missingPieces was defined above, before we cleared vars.curentPieces
-      if (oldName == "2-2" && missingPieces == 2) {
-        vars.log("Exited Cloud Bridge (2 missing pieces)");
-        return settings["Split when exiting The Cloud Bridge after collecting 2 pieces"];
-      }
-      if (oldName == "2-4" && missingPieces == 3) {
-        vars.log("Exited Leap of Faith (3 missing pieces)");
-        return settings["Split when exiting Leap of Faith after collecting 1 piece"];
-      }
-      if (oldName == "0-0") {
-        vars.completedLevels[oldName] = false;
-        vars.log("Exited the house");
-        return settings["Split when exiting the house"];
-      }
-      if (old.world == 0) {
-        vars.log("Exited the lobby");
-        return settings["Split when exiting lobby levels"];
-      }
-      if (missingPieces == 0) {
-        vars.log("Completed a puzzle level (0 missing pieces)");
-        return settings["Split when completing and exiting a puzzle level"];
+        if (oldName == "0-8" && currentName == "0-0") {
+          vars.log("Exited the epilogue");
+          return true;
+        }
+        if (old.world != 0 && currentName == "0-0") {
+          vars.log("Returned to house");
+          return settings["Split when returning to the house"];
+        }
+        if (oldName == "1-2" && currentName == "1-1") {
+          vars.log("Entered Braid");
+          return settings["Split when entering the Braid level"];
+        }
+        if (oldName == "1-1" && currentName == "0-8") {
+          vars.log("Exited Braid");
+          return settings["Split when exiting the Braid level"];
+        }
+        if (oldName == "3-7" && currentName == "3-8") {
+          vars.log("Exited W3 Lair");
+          return settings["Split when exiting Lair in World 3"];
+        }
+        // missingPieces was computed above, before we cleared vars.curentPieces
+        if (oldName == "2-2" && missingPieces == 2) {
+          vars.log("Exited Cloud Bridge (2 missing pieces)");
+          return settings["Split when exiting The Cloud Bridge after collecting 2 pieces"];
+        }
+        if (oldName == "2-4" && missingPieces == 3) {
+          vars.log("Exited Leap of Faith (3 missing pieces)");
+          return settings["Split when exiting Leap of Faith after collecting 1 piece"];
+        }
+        if (oldName == "0-0") {
+          vars.completedLevels[oldName] = false;
+          vars.log("Exited the house");
+          return settings["Split when exiting the house"];
+        }
+        if (old.world == 0) {
+          vars.log("Exited the lobby");
+          return settings["Split when exiting lobby levels"];
+        }
+        if (missingPieces == 0) {
+          vars.log("Completed a puzzle level (0 missing pieces)");
+          return settings["Split when completing and exiting a puzzle level"];
+        }
       }
     }
   }
