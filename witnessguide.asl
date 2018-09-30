@@ -2,12 +2,10 @@ state("witness64_d3d11") {}
 // Broken (and won't fix?)
 // Town RGB blue is masked by red
 // Bunker floor 2 is masked by 5
-// Unable to differentiate Mountain blue before/after elevator
 // Windmill deactivate -> Find door
-// Keep Green EP masks non-EP
-// Some way to reset (restarting game?)
-// Fix cinema (and probably challenge start)
 // Use actual picture numbers rather than internal count
+// Keep Purple reset adds ep_half in the wrong order
+// Some way to reset (restarting game?)
 
 startup {
   settings.Add("Loaded", true);
@@ -60,7 +58,7 @@ init {
     throw new Exception("Could not find solved offset!");
   }
   int solvedOffset = game.ReadValue<int>(ptr);
-  
+
   // clear_traced_edges()
   ptr = scanner.Scan(new SigScanTarget(2,
     "C7 83 ????0000 00000000", // mov [rbx + offset], 0
@@ -70,7 +68,7 @@ init {
     throw new Exception("Could not find segment count offset!");
   }
   int segmentOffset = game.ReadValue<int>(ptr);
-  
+
   // Entity_Bridge::update()
   ptr = scanner.Scan(new SigScanTarget(3,
     "0F2F 83 ????????", // comiss xmm0, [rbx + target]
@@ -82,7 +80,7 @@ init {
   }
   int bridgeTargetA = game.ReadValue<int>(ptr);
   int bridgeTargetB = game.ReadValue<int>(ptr+34);
-  
+
   // Entity_Door::update()
   ptr = scanner.Scan(new SigScanTarget(4,
     "F3 0F10 8B ????????", // movss xmm1, [rbx + target1]
@@ -94,7 +92,7 @@ init {
   }
   int doorCurrent = game.ReadValue<int>(ptr);
   int doorTarget = game.ReadValue<int>(ptr+8);
-  
+
   // update_position_panel()
   ptr = scanner.Scan(new SigScanTarget(3,
     "45 3B B7 ????????", // cmp r14d, [r15+offset]
@@ -112,7 +110,7 @@ init {
     "0F28 F8"            // movaps xmm7, xmm0
   ));
   int waypointOffset = game.ReadValue<int>(ptr);
-  
+
   // Entity_Obelisk_Report::light_up
   ptr = scanner.Scan(new SigScanTarget(3,
     "C3",                      // ret
@@ -120,7 +118,7 @@ init {
     "48 83 C4 20"              // add rsp, 20
   ));
   int epOffset = game.ReadValue<int>(ptr);
-  
+
   print(
     "Solved offset: "+solvedOffset.ToString("X")
     + "\n Segment offset: "+segmentOffset.ToString("X")
@@ -151,7 +149,7 @@ init {
   vars.playerY = new MemoryWatcher<float>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr) + 4
   ));
-  
+
   // get_panel_color_cycle_factors()
   ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
     "83 FA 02",           // cmp edx, 02
@@ -711,7 +709,7 @@ init {
     {0x0AC7A, "Tutorial 7"},
     {0x0C335, "Pillar"},
     {0x0C339, "Surface Door"},
-    {0x0C373, "Floor"},
+    {0x0C373, "Patio Floor"},
     {0x0CC7B, "Desert Vault"},
     {0x15ADD, "Jungle Vault"},
     {0x17BDF, "Second Purple 5"},
@@ -956,7 +954,7 @@ init {
 
 </Run>";
 
-  var panelCounts = new Dictionary<int, int>();
+  var panelCounts = new Dictionary<string, int>();
   vars.epStates = new Dictionary<int, MemoryWatcher<int>>();
   foreach (var pair in epNames) {
     int id = pair.Key;
@@ -980,7 +978,7 @@ init {
     int otherLength;
     double target;
     double curr;
-    
+
     switch(panel) {
     case 0x0060A: // Swamp Sliding Bridge Control
     case 0x18489: // Swamp Sliding Bridge Control (Underwater)
@@ -1003,9 +1001,10 @@ init {
       break;
     case 0x01BEA: // Keep Purple
       if (length == 19) suffix = "_ep"; // EP solution
+      if (length == 0) suffix = "_ep_half"; // EP first half, triggered by purple reset
       break;
     case 0x01CD4: // Keep Green
-      if (length == 17) suffix = "_ep"; // EP solution
+      if (splits.Contains("Green Reset")) suffix = "_ep"; // EP solution
       break;
     case 0x01D40: // Keep Blue
       if (vars.playerX.Current > 45.0) suffix = "_ep1"; // Ending on the left side
@@ -1014,6 +1013,19 @@ init {
     case 0x033EB: // Keep Yellow
       if (length == 26) suffix = "_ep"; // EP solution
       break;
+    case 0x0354A: // Theater Challenge Vault
+      suffix = "_eclipse";
+      break;
+    case 0x0354F: // Theater Jungle Vault
+      suffix = "_church";
+      break;
+    case 0x03554: // Theater Tutorial Vault
+      if (length <= 8) suffix = "_window_and_door";
+      if (length > 8) suffix = "_catwalk";
+      break;
+    case 0x0361C: // Keep Tower Shortcut
+      if (vars.playerY.Current > 180.0) suffix = "_far";
+      break;
     case 0x0362A: // Tutorial gate
       if (length == 17) panel = 0x0362A;
       if (length == 29) panel = 0x03506;
@@ -1021,14 +1033,14 @@ init {
     case 0x03676: // Mill Lift Control (Room)
     case 0x0367A: // Mill Lift Control (Ground)
       target = createPointer(0x21BB, doorTarget).Deref<float>(game);
-      if (target == 0) suffix = "_l";
-      if (target == 1) suffix = "_r";
+      if (target == 0) suffix = "_d";
+      if (target == 1) suffix = "_u";
       break;
     case 0x03677: // Mill Ramp Control (Room)
     case 0x03679: // Mill Ramp Control (Ground)
       target = createPointer(0x383A, doorTarget).Deref<float>(game);
-      if (target == 0) suffix = "_l";
-      if (target == 1) suffix = "_r";
+      if (target == 0) suffix = "_d";
+      if (target == 1) suffix = "_u";
       break;
     case 0x03800: // Treehouse Drawbridge Control
       if (length == 20) suffix = "_d";
@@ -1036,8 +1048,8 @@ init {
       break;
     case 0x03853: // Boathouse Ramp Angle Control
       target = createPointer(0x17C6B, doorTarget).Deref<float>(game);
-      if (target == 0) suffix = "_l";
-      if (target == 1) suffix = "_r";
+      if (target == 0) suffix = "_d";
+      if (target == 1) suffix = "_u";
       break;
     case 0x03859: // Boathouse Ramp Position Control
       target = createPointer(0x17F03, doorTarget).Deref<float>(game);
@@ -1072,7 +1084,7 @@ init {
       if (length == 18 && otherLength == 0) suffix = "_1";
       if (length == 8 && otherLength == 10) suffix = "_2";
       if (length == 11 && otherLength == 10) suffix = "_3";
-      // if (length == 11 && otherLength == 10) suffix = "_4"; // After elevator
+      if (splits.Contains("Mountain Elevator Up")) suffix = "_4"; // After elevator
       if (length == 4 && otherLength == 14) suffix = "_5";
       break;
     case 0x09ED9: // Mountain Orange Pathway
@@ -1084,8 +1096,14 @@ init {
       break;
     case 0x09EEC: // Mountain Elevator
       target = createPointer(0x09EED, doorTarget).Deref<float>(game);
-      if (target == 0) suffix = "_u";
-      if (target == 1) suffix = "_d";
+      if (target == 0) {
+        suffix = "_u";
+        name += " Up";
+      }
+      if (target == 1) {
+        suffix = "_d";
+        name += " Down";
+      }
       break;
     case 0x09F80: // Mountaintop Box
       if (length == 14) {
@@ -1102,6 +1120,7 @@ init {
       target = (target + 1.0) % 1.0;
       if (target == 0.750) suffix = "_2";
       if (target == 0.583) suffix = "_1";
+      if (vars.playerY.Current > -20.0) suffix += "_far";
       break;
     case 0x09FCD:
     case 0x09FCF:
@@ -1134,6 +1153,9 @@ init {
     case 0x0A3B6: // Tutorial Back Left
       if (length == 15) suffix = "_1";
       if (length == 25) suffix = "";
+      break;
+    case 0x0A3BA: // Keep Purple Reset
+      vars.onPanelExited(0x01BEA, 1);
       break;
     case 0x0C374: // Tutorial Flowers
       if (state == 1) suffix = "";
@@ -1295,9 +1317,18 @@ init {
       }
       if ((338 <= source && source <= 342) ||
           (117 <= source && source <= 123)) {
-        suffix = "_quarry_swamp";
+        for (int i=0; i<length; i++) {
+          var waypoint = (new DeepPointer(basePointer, 0x18, 0x30*8, waypointOffset, i*4)).Deref<int>(game);
+          if (waypoint == 150) {
+            suffix = "_quarry_swamp_100";
+            break;
+          }
+          if (waypoint == 250) {
+            suffix = "_quarry_swamp";
+            break;
+          }
+        }
         name = "Boat to Swamp";
-        if (length > 60) suffix += "_100";
       }
       if ((154 <= source && source <= 167) ||
           (272 <= source && source <= 277)) {
@@ -1355,7 +1386,7 @@ init {
       }
       break;
     }
-    
+
     if (macroSplits.ContainsKey(panel)) {
       name = "{" + macroSplits[panel] + "}" + name;
       macroSplits.Remove(panel);
@@ -1365,17 +1396,17 @@ init {
     } else {
       name = "-" + name;
     }
-    if (panelCounts.ContainsKey(panel)) {
-      panelCounts[panel]++;
-      name += " (" + panelCounts[panel] + ")";
+    if (panelCounts.ContainsKey(panel + "_" + name)) {
+      panelCounts[panel + "_" + name]++;
+      name += " (" + panelCounts[panel + "_" + name] + ")";
     } else {
-      panelCounts[panel] = 1;
+      panelCounts[panel + "_" + name] = 1;
     }
     if (state != 2) {
       splits += "<Segment><Name>" + name + "</Name><SplitTimes /><BestSegmentTime /><SegmentHistory /></Segment>\r\n";
       System.IO.File.WriteAllText(copyTo + "_splits.lss", splitsStart + splits + splitsEnd);
     }
-    
+
     copyFrom += (panel-1).ToString("X").PadLeft(5, '0') + suffix;
     copyTo += vars.nextId.ToString().PadLeft(5, '0');
     try {
@@ -1385,11 +1416,11 @@ init {
       File.Create(copyTo + "_0x" + (panel-1).ToString("X").PadLeft(5, '0') + ".png");
     }
     vars.nextId++;
-    
-    
+
+
     return true;
   });
-  
+
   vars.initDone = true;
 }
 
@@ -1403,7 +1434,7 @@ update {
   vars.playerY.Update(game);
   vars.keepWatchers.UpdateAll(game);
 
-  
+
   // Started a new panel
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
     vars.setActivePanel(vars.puzzle.Current);
@@ -1430,7 +1461,7 @@ update {
       return;
     }
   }
-  
+
   if (vars.activePanel == 0) return;
   // States:
   // 0: Unsolved
@@ -1443,9 +1474,10 @@ update {
   if (state == 0 || state == 4) return;
   if (state == 1) {
     vars.onPanelExited(vars.activePanel, state);
+    print(""+vars.activePanel);
   }
   // Theater panel + Challenge start
-  if (state == 3 && (vars.activePanel == 0x00815 || vars.activePanel == 0x0A333)) {
+  if (state == 3 && (vars.activePanel == 0x00816 || vars.activePanel == 0x0A333)) {
     vars.onPanelExited(vars.activePanel, state);
   }
   // Bunker Elevator + Tutorial Flowers
