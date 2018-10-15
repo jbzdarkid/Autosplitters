@@ -252,7 +252,7 @@ split {
     } else {
       if (settings["Split on Community% ending"]) {
           vars.tetroCount++;
-          print("vars.tetroCount + " tetromino(s) total");
+          print(vars.tetroCount + " tetromino(s) total");
           if (vars.tetroCount >= 99) {
             return true;
           }
