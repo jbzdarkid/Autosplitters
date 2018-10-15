@@ -150,6 +150,7 @@ start {
     vars.lastLines = 0;
     vars.adminEnding = false;
     vars.introCutscene = true;
+    vars.tetroCount = 0;
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -162,6 +163,7 @@ start {
     vars.lastLines = 0;
     vars.adminEnding = false;
     vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
+    vars.tetroCount = 0;
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -199,9 +201,6 @@ split {
        mapName.EndsWith("DLC_01_Hub.wld"))) {
       return true;
     }
-    if (mapName.EndsWith("Cloud_3_08.wld")) {
-      vars.cStarSigils = 0;
-    }
     if (settings["(Custom/DLC) Split on any world transition"]) {
       return true;
     }
@@ -214,13 +213,6 @@ split {
       vars.lastSigil = sigil;
     }
     print("Collected sigil " + sigil + " in world " + vars.currentWorld);
-    if (vars.currentWorld.EndsWith("Cloud_3_08.wld")) {
-      vars.cStarSigils++;
-      print("Collected " + vars.cStarSigils + " in C*");
-      if (vars.cStarSigils == 3 && settings["Split on Community% ending"]) {
-        return true;
-      }
-    }
     if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
       print("Not splitting for a collection in A4, per setting.");
       return false;
@@ -258,6 +250,13 @@ split {
         }
       }
     } else {
+      if (settings["Split on Community% ending"]) {
+          vars.tetroCount++;
+          print("vars.tetroCount + " tetromino(s) total");
+          if (vars.tetroCount >= 99) {
+            return true;
+          }
+        }
       return settings["Split on tetromino collection or DLC robot collection"];
     }
   }
