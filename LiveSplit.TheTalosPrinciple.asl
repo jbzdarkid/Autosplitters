@@ -150,7 +150,7 @@ start {
     vars.lastLines = 0;
     vars.adminEnding = false;
     vars.introCutscene = true;
-    vars.tetroCount = 0;
+    vars.greyCount = 0;
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -163,7 +163,7 @@ start {
     vars.lastLines = 0;
     vars.adminEnding = false;
     vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
-    vars.tetroCount = 0;
+    vars.greyCount = 0;
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -250,10 +250,11 @@ split {
         }
       }
     } else {
-      if (settings["Split on Community% ending"]) {
-          vars.tetroCount++;
-          print(vars.tetroCount + " tetromino(s) total");
-          if (vars.tetroCount >= 99) {
+      if (settings["Split on Community% ending"] && sigil.StartsWith("E")) {
+          vars.greyCount++;
+          print(vars.greyCount + " grey tetromino(s) total");
+          if (vars.greyCount >= 9) {
+            print("Collected all greys, assumming comm% finished");
             return true;
           }
         }
