@@ -8,18 +8,20 @@ startup {
   // Commonly used, defaults to true
   settings.Add("Don't start the run if cheats are active", true);
   settings.Add("Split on return to Nexus or DLC Hub", true);
-  settings.Add("Split on tetromino tower doors", true);
   settings.Add("Split on item unlocks", true);
   settings.Add("Split on star collection in the Nexus", true);
+
+  settings.Add("Split on Nexus green world doors", true);
+  settings.Add("Split on Nexus red tower doors", false);
+  settings.Add("Split on the Nexus gray Floor 6 door", false);
+  settings.Add("Split on Nexus gold star doors", false); // (mostly) unused by the community
 
   // Less commonly used, but still sees some use
   settings.Add("Split on tetromino collection or DLC robot collection", false);
   settings.Add("Split on star collection", false);
-  settings.Add("Split on tetromino world doors", false);
   settings.Add("Split on exiting any terminal", false);
 
   // Rarely used
-  settings.Add("Split on tetromino star doors", false); // (mostly) unused by the community
   settings.Add("Split on Community% ending", false); // Community% completion -- mostly unused
   settings.Add("Split when exiting Floor 5", false);
   settings.Add("Start the run in any world", false);
@@ -35,6 +37,19 @@ startup {
   settings.Add("worldsplits-B4", false, "B4");
   settings.Add("worldsplits-B6", false, "B6");
   settings.Add("worldsplits-B8", false, "B8");
+
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
+  vars.log = (Action<string>)((string logLine) => {
+    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  try {
+    vars.log("Autosplitter loaded");
+  } catch (System.IO.FileNotFoundException e) {
+    System.IO.File.Create(vars.logFilePath);
+    vars.log("Autosplitter loaded, log file created");
+  }
+
 }
 
 init {
@@ -51,15 +66,15 @@ init {
     logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
   }
   logPath += "\\Log\\" + game.ProcessName + ".log";
-  print("Using log path: '" + logPath + "'");
-  
+  vars.log("Using log path: '" + logPath + "'");
+
   if (game.Is64Bit()) {
     ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
       "44 39 25 ????????", // cmp [Talos.exe+target], r12d
       "48 8B F9"           // mov rdi, rcx
     ));
     if (ptr == IntPtr.Zero) {
-      print("Could not find x64 cheatFlags!");
+      vars.log("Could not find x64 cheatFlags!");
       return false;
     }
     int relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
@@ -73,8 +88,8 @@ init {
       "FF 92 B0000000"     // call qword ptr [rdx+B0]
     ));
     if (ptr == IntPtr.Zero) {
-      print("Could not find x64 isLoading!");
-      return false; 
+      vars.log("Could not find x64 isLoading!");
+      return false;
     }
     relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
     vars.isLoading = new MemoryWatcher<int>(new DeepPointer(
@@ -88,7 +103,7 @@ init {
       "5E"           // pop esi
     ));
     if (ptr == IntPtr.Zero) {
-      print("Could not find x86 cheatFlags!");
+      vars.log("Could not find x86 cheatFlags!");
       return false;
     }
     vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(
@@ -101,8 +116,8 @@ init {
       "FF 52 58"        // call dword ptr [edx+58]
     ));
     if (ptr == IntPtr.Zero) {
-      print("Could not find x86 isLoading!");
-      return false; 
+      vars.log("Could not find x86 isLoading!");
+      return false;
     }
     vars.isLoading = new MemoryWatcher<int>(new DeepPointer(
       game.ReadValue<int>(ptr) - (int)page.BaseAddress,
@@ -118,7 +133,7 @@ init {
     fs.SetLength(0);
     fs.Close();
   } catch {} // May fail if file doesn't exist.
-  vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)); 
+  vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
 }
 
@@ -131,7 +146,7 @@ update {
   vars.line = vars.reader.ReadLine();
   if (vars.line == null) return false; // If no line was read, don't run any other blocks.
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
-  
+
   vars.cheatFlags.Update(game);
   vars.isLoading.Update(game);
 }
@@ -139,12 +154,12 @@ update {
 start {
   if (settings["Don't start the run if cheats are active"] &&
     vars.cheatFlags.Current != 0) {
-    print("Not starting the run because of cheat flags: "+vars.cheatFlags.Current);
+    vars.log("Not starting the run because of cheat flags: "+vars.cheatFlags.Current);
     return false;
   }
   // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
   if (vars.line.StartsWith("Started simulation on") && (vars.line.Contains("Cloud_1_01.wld") || vars.line.Contains("DLC_01_Intro.wld'"))) {
-    print("Started a new run from a normal starting world.");
+    vars.log("Started a new run from a normal starting world.");
     vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
     vars.lastSigil = "";
     vars.lastLines = 0;
@@ -153,10 +168,10 @@ start {
     timer.IsGameTimePaused = true;
     return true;
   }
-  
+
   if (settings["Start the run in any world"] &&
     vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
-    print("Started a new run from a non-normal starting world.");
+    vars.log("Started a new run from a non-normal starting world.");
     vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
     vars.lastSigil = "";
     vars.lastLines = 0;
@@ -169,14 +184,14 @@ start {
 
 reset {
   if (vars.line == "Saving talos progress upon game stop.") {
-    print("Stopped run because the game was stopped.");
-    return true; // Unique line printed only when you stop the game
+    vars.log("Stopped run because the game was stopped.");
+    return true; // Unique line vars.loged only when you stop the game
   }
 }
 
 isLoading {
   if (vars.introCutscene && vars.line == "Save Talos Progress: delayed request") {
-    print("Intro cutscene was skipped or ended normally, starting timer.");
+    vars.log("Intro cutscene was skipped or ended normally, starting timer.");
     vars.introCutscene = false;
   }
   // Pause the timer during the intro cutscene
@@ -192,7 +207,7 @@ split {
     if (mapName == vars.currentWorld) {
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
-    print("Changed worlds from "+vars.currentWorld+" to "+mapName);
+    vars.log("Changed worlds from "+vars.currentWorld+" to "+mapName);
     vars.currentWorld = mapName;
     if (settings["Split on return to Nexus or DLC Hub"] &&
       (mapName.EndsWith("Nexus.wld") ||
@@ -213,40 +228,40 @@ split {
     } else {
       vars.lastSigil = sigil;
     }
-    print("Collected sigil " + sigil + " in world " + vars.currentWorld);
+    vars.log("Collected sigil " + sigil + " in world " + vars.currentWorld);
     if (vars.currentWorld.EndsWith("Cloud_3_08.wld")) {
       vars.cStarSigils++;
-      print("Collected " + vars.cStarSigils + " in C*");
+      vars.log("Collected " + vars.cStarSigils + " in C*");
       if (vars.cStarSigils == 3 && settings["Split on Community% ending"]) {
         return true;
       }
     }
     if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
-      print("Not splitting for a collection in A4, per setting.");
+      vars.log("Not splitting for a collection in A4, per setting.");
       return false;
     }
     if (settings["worldsplits-A6"] && vars.currentWorld.EndsWith("Cloud_1_06.wld")) {
-      print("Not splitting for a collection in A6, per setting.");
+      vars.log("Not splitting for a collection in A6, per setting.");
       return false;
     }
     if (settings["worldsplits-B1"] && vars.currentWorld.EndsWith("Cloud_2_01.wld")) {
-      print("Not splitting for a collection in B1, per setting.");
+      vars.log("Not splitting for a collection in B1, per setting.");
       return false;
     }
     if (settings["worldsplits-B3"] && vars.currentWorld.EndsWith("Cloud_2_03.wld")) {
-      print("Not splitting for a collection in B3, per setting.");
+      vars.log("Not splitting for a collection in B3, per setting.");
       return false;
     }
     if (settings["worldsplits-B4"] && vars.currentWorld.EndsWith("Cloud_2_04.wld")) {
-      print("Not splitting for a collection in B4, per setting.");
+      vars.log("Not splitting for a collection in B4, per setting.");
       return false;
     }
     if (settings["worldsplits-B6"] && vars.currentWorld.EndsWith("Cloud_2_06.wld")) {
-      print("Not splitting for a collection in B6, per setting.");
+      vars.log("Not splitting for a collection in B6, per setting.");
       return false;
     }
     if (settings["worldsplits-B8"] && vars.currentWorld.EndsWith("Cloud_2_08.wld")) {
-      print("Not splitting for a collection in B8, per setting.");
+      vars.log("Not splitting for a collection in B8, per setting.");
       return false;
     }
     if (sigil.StartsWith("**")) {
@@ -265,18 +280,21 @@ split {
   // Arranger puzzles
   if (vars.line.StartsWith("Puzzle \"") && vars.line.Contains("\" solved")) {
     var puzzle = vars.line.Substring(8);
-    print("Solved puzzle: " + puzzle);
+    vars.log("Solved puzzle: " + puzzle);
     if (puzzle.StartsWith("Mechanic")) {
       return settings["Split on item unlocks"];
     }
-    if (puzzle.StartsWith("Door") && settings["Split on tetromino world doors"]) {
+    if (puzzle.StartsWith("Door") && settings["Split on Nexus green world doors"]) {
       return true; // Working around a custom arranger called 'Door_Dome'
     }
     if (puzzle.StartsWith("SecretDoor")) {
-      return settings["Split on tetromino star doors"];
+      return settings["Split on Nexus gold tetromino star doors"];
     }
     if (puzzle.StartsWith("Nexus")) {
-      return settings["Split on tetromino tower doors"];
+      return settings["Split on Nexus red tower doors"];
+    }
+    if (puzzle == "AlternativeEding") {
+      return settings["Split on the Nexus gray Floor 6 door"];
     }
     if (puzzle.StartsWith("DLC_01_Secret")) {
       return settings["(Custom/DLC) Split when solving any arranger"];
@@ -291,26 +309,26 @@ split {
 
   // Miscellaneous
   if (vars.line == "Save Talos Progress: exited terminal") {
-    print("User exited terminal");
+    vars.log("User exited terminal");
     return settings["Split on exiting any terminal"];
   }
   if (vars.currentWorld.EndsWith("Islands_03.wld")) {
     if (vars.line.StartsWith("USER:")) { // Line differs in languages, not the prefix
-      print("Game completed via Messenger ending.");
+      vars.log("Game completed via Messenger ending.");
       return true;
     }
   }
   if (vars.currentWorld.EndsWith("Nexus.wld")) {
     if (vars.line == "Elohim speaks: Elohim-063_Nexus_Ascent_01") {
-      print("User exits floor 5 and starts ascending the tower");
+      vars.log("User exits floor 5 and starts ascending the tower");
       return settings["Split when exiting Floor 5"];
     }
     if (vars.line == "USER: /transcend") {
-      print("Game completed via Transcendence ending.");
+      vars.log("Game completed via Transcendence ending.");
       return true;
     }
     if (vars.line == "USER: /eternalize") {
-      print("Game completed via Eternalize ending.");
+      vars.log("Game completed via Eternalize ending.");
       return true;
     }
   }
