@@ -2,6 +2,8 @@ state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
 // Starts splitting on every panel after challenge (even if split on panels isn't set)
+// VERIFY: Laser-only splits don't treat quarry laser old-style (only splitting if valid solution)
+// TODO: Dynamically create list of configuration files (and therefore settings)
 
 startup {
   // Environmental puzzles/patterns, the +135
@@ -41,7 +43,7 @@ startup {
     0x09FCD, // Mountain Multi
     0x09EEC, // Mountain Elevator
   };
-  
+
   vars.keepWalkOns = new List<int>{
     0x033EB, // Yellow
     0x01BEA, // Purple
@@ -69,7 +71,7 @@ startup {
     0x17CA5, // Monastery
     0x19651, // Shadows
   };
-  
+
   // One-off splits (usually to accompany 11 lasers splits)
   settings.Add("Split on tutorial door", true);
   settings.Add("Split when starting the boat", false);
@@ -85,8 +87,16 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
-  
+
   settings.Add("Split based on configuration file", false);
+
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
+  vars.log = (Action<string>)((string logLine) => {
+    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    // AppendAllText will create the file if it doesn't exist.
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  vars.log("Autosplitter loaded");
 }
 
 init {
@@ -111,7 +121,7 @@ init {
       }
     }
   }
-  
+
   // get_active_panel()
   IntPtr ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
     "48 8B 05 ????????", // mov rax, [witness64_d3d11.exe + offset]
@@ -180,7 +190,7 @@ init {
   vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
     basePointer, 0x18, 0xBFF*8, recordPowerOffset
   ));
-  
+
   // Entity_Door::update()
   ptr = scanner.Scan(new SigScanTarget(4,
     "F3 0F10 8B ????????", // movss xmm1, [rbx + target1]
@@ -200,7 +210,7 @@ init {
     "48 83 C4 20"              // add rsp, 20
   ));
   vars.epOffset = game.ReadValue<int>(ptr);
-  
+
   print(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
@@ -284,14 +294,14 @@ init {
     throw new Exception("Couldn't find panel type!");
   }
   print("Panel type: 0x"+panelType.ToString("X"));
-  vars.addPanel = (Action<int, int, int>)((int panel, int maxSolves, int offset) => {
+  vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
     if (!vars.panels.ContainsKey(panel)) {
       int type = createPointer(panel-1, 0x8).Deref<int>(game);
       if (type == panelType) {
         vars.panels[panel] = new Tuple<int, int, DeepPointer>(
           0,         // Number of times solved
           maxSolves, // Number of times to split
-          createPointer(panel-1, offset)
+          createPointer(panel-1, vars.solvedOffset)
         );
       }
     }
@@ -322,14 +332,14 @@ init {
       vars.keepWatchers.UpdateAll(game);
       vars.multiWatchers = new MemoryWatcherList();
       foreach (var panel in vars.multipanel) {
-        vars.addPanel(panel, 0, vars.solvedOffset);
+        vars.addPanel(panel, 0);
         vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.completedOffset)));
       }
       vars.multiWatchers.UpdateAll(game);
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
-      foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999, vars.solvedOffset);
+      foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999);
       // Boat speed panel should never split, it's too inconsistent
-      vars.addPanel(0x34C80, 0, vars.completedOffset);
+      vars.addPanel(0x34C80, 0);
 
 
 
@@ -390,28 +400,28 @@ init {
       // Individual panels use the completed offset, since they just need to be completed the first time you exit them
       if (settings["Split on lasers"]) {
         foreach (var laser in vars.lasers) {
-          vars.addPanel(laser, 1, vars.completedOffset);
+          vars.addPanel(laser, 1);
         }
       }
       if (settings["Split on tutorial door"]) {
-        vars.addPanel(0x0362A, 1, vars.completedOffset);
+        vars.addPanel(0x0362A, 1);
       }
       if (settings["Split when starting the boat"]) {
-        vars.addPanel(0x34D97, 1, vars.completedOffset);
+        vars.addPanel(0x34D97, 1);
       }
       if (settings["Split on greenhouse elevator"]) {
-        vars.addPanel(0x0A07A, 1, vars.completedOffset);
+        vars.addPanel(0x0A07A, 1);
       }
       if (settings["Split on mountain elevator"]) {
-        vars.addPanel(0x09EEC, 1, vars.completedOffset);
+        vars.addPanel(0x09EEC, 1);
       }
       if (settings["Split on final elevator"]) {
-        vars.addPanel(0x3D9AA, 1, vars.completedOffset);
+        vars.addPanel(0x3D9AA, 1);
       }
     }
     if (settings["Split on challenge end"]) {
-      vars.addPanel(0x1C31A, 0, vars.solvedOffset); // Right pillar
-      vars.addPanel(0x1C31B, 0, vars.solvedOffset); // Left pillar
+      vars.addPanel(0x1C31A, 0); // Right pillar
+      vars.addPanel(0x1C31B, 0); // Left pillar
     }
   });
   vars.initPuzzles();
@@ -554,9 +564,9 @@ split {
     if (!vars.panels.ContainsKey(panel)) {
       print("Encountered new panel 0x"+panel.ToString("X"));
       if (settings["Split on all panels (solving and non-solving)"]) {
-        vars.addPanel(panel, 1, vars.solvedOffset);
+        vars.addPanel(panel, 1);
       } else {
-        vars.addPanel(panel, 0, vars.solvedOffset);
+        vars.addPanel(panel, 0);
       }
     }
   }
