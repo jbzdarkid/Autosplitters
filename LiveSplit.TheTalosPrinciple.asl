@@ -161,6 +161,7 @@ start {
     vars.currentWorld = world;
     vars.lastSigil = "";
     vars.lastLines = 0;
+    vars.graySigils = 0;
     vars.adminEnding = false;
     vars.introCutscene = true;
     timer.IsGameTimePaused = true;
@@ -221,9 +222,6 @@ split {
        mapName.EndsWith("DLC_01_Hub.wld"))) {
       return true;
     }
-    if (mapName.EndsWith("Cloud_3_08.wld")) {
-      vars.cStarSigils = 0;
-    }
     if (settings["(Custom/DLC) Split on any world transition"]) {
       return true;
     }
@@ -236,13 +234,6 @@ split {
       vars.lastSigil = sigil;
     }
     vars.log("Collected sigil " + sigil + " in world " + vars.currentWorld);
-    if (vars.currentWorld.EndsWith("Cloud_3_08.wld")) {
-      vars.cStarSigils++;
-      vars.log("Collected " + vars.cStarSigils + " in C*");
-      if (vars.cStarSigils == 3 && settings["Split on Community% ending"]) {
-        return true;
-      }
-    }
     if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
       vars.log("Not splitting for a collection in A4, per setting.");
       return false;
@@ -270,6 +261,13 @@ split {
     if (settings["worldsplits-B8"] && vars.currentWorld.EndsWith("Cloud_2_08.wld")) {
       vars.log("Not splitting for a collection in B8, per setting.");
       return false;
+    }
+    if (sigil.StartsWith("E")) {
+      vars.graySigils++;
+      vars.log("Collected gray sigil #" + vars.graySigils);
+      if (vars.graySigils == 9 && settings["Split on Community% ending"]) {
+        return true;
+      }
     }
     if (sigil.StartsWith("**")) {
       if (settings["Split on star collection"]) {
