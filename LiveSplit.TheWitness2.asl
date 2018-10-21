@@ -1,8 +1,6 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
-// Starts splitting on every panel after challenge (even if split on panels isn't set)
-// VERIFY: Laser-only splits don't treat quarry laser old-style (only splitting if valid solution)
 // TODO: Dynamically create list of configuration files (and therefore settings)
 
 startup {
@@ -596,7 +594,7 @@ split {
       );
       print("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
       vars.activePanel = 0;
-      if (settings["Split on challenge end"]) {
+      if (settings["Split on challenge end"] && (panel == 0x1C31A || panel == 0x1C31B)) {
         if (vars.panels[0x1C31A].Item1 == 1 && vars.panels[0x1C31B].Item1 == 1) {
           return true;
         }
