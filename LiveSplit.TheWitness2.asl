@@ -114,7 +114,7 @@ init {
         vars.tc = component;
         vars.tcs = vars.tc.Settings;
         vars.updateText = true;
-        print("Found text component at " + component);
+        vars.log("Found text component at " + component);
         break;
       }
     }
@@ -138,7 +138,7 @@ init {
   ));
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
   int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
-  print("witness64_d3d11.globals = "+basePointer.ToString("X"));
+  vars.log("witness64_d3d11.globals = "+basePointer.ToString("X"));
 
   // judge_panel()
   ptr = scanner.Scan(new SigScanTarget(0,
@@ -209,7 +209,7 @@ init {
   ));
   vars.epOffset = game.ReadValue<int>(ptr);
 
-  print(
+  vars.log(
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
@@ -291,10 +291,13 @@ init {
   if (panelType == 0) {
     throw new Exception("Couldn't find panel type!");
   }
-  print("Panel type: 0x"+panelType.ToString("X"));
+  vars.log("Panel type: 0x"+panelType.ToString("X"));
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
     if (!vars.panels.ContainsKey(panel)) {
       int type = createPointer(panel-1, 0x8).Deref<int>(game);
+      if (type == 0) {
+        vars.log("Got panel type 0! Split likely skipped.");
+      }
       if (type == panelType) {
         vars.panels[panel] = new Tuple<int, int, DeepPointer>(
           0,         // Number of times solved
@@ -320,7 +323,7 @@ init {
   vars.initPuzzles = (Action)(() => {
     vars.epCount = 0;
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
-    print("Loaded with EP count: "+vars.epCount);
+    vars.log("Loaded with EP count: "+vars.epCount);
     vars.panels.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
       vars.keepWatchers = new MemoryWatcherList();
@@ -380,7 +383,7 @@ init {
           vars.configWatchers.Add(new MemoryWatcher<float>(
             createPointer(id, vars.doorOffset)));
         }
-        print("Watching " + mode + ": 0x" + id.ToString("X"));
+        vars.log("Watching " + mode + ": 0x" + id.ToString("X"));
       }
       vars.configWatchers.UpdateAll(game);
 
@@ -506,7 +509,7 @@ update {
   vars.configWatchers.UpdateAll(game);
 
   if (settings["Enable random doors practice"] != vars.randomDoorsState) {
-    print(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
+    vars.log(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
     vars.randomDoorsInjection();
   }
   if (vars.tcs != null && (vars.updateText || old.deathCount != current.deathCount)) {
@@ -558,9 +561,9 @@ split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
-    print("Started panel 0x"+panel.ToString("X"));
+    vars.log("Started panel 0x"+panel.ToString("X"));
     if (!vars.panels.ContainsKey(panel)) {
-      print("Encountered new panel 0x"+panel.ToString("X"));
+      vars.log("Encountered new panel 0x"+panel.ToString("X"));
       if (settings["Split on all panels (solving and non-solving)"]) {
         vars.addPanel(panel, 1);
       } else {
@@ -592,7 +595,7 @@ split {
         puzzleData.Item2,     // Maximum split count
         puzzleData.Item3      // State pointer
       );
-      print("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
+      vars.log("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
       vars.activePanel = 0;
       if (settings["Split on challenge end"] && (panel == 0x1C31A || panel == 0x1C31B)) {
         if (vars.panels[0x1C31A].Item1 == 1 && vars.panels[0x1C31B].Item1 == 1) {
@@ -603,11 +606,11 @@ split {
         return true;
       }
     } else if (state == 2 || state == 3) {
-      print("Panel 0x" + panel.ToString("X") + " exited in state " + state);
+      vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
       vars.deathCount++;
     } else if (state != 0) {
-      print("Panel 0x" + panel.ToString("X") + " exited in state " + state);
+      vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
     }
   }
@@ -627,7 +630,7 @@ split {
         puzzleData.Item2,     // Maximum split count
         puzzleData.Item3      // State pointer
       );
-      print("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1 + " of " + puzzleData.Item2 + " time(s)");
+      vars.log("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1 + " of " + puzzleData.Item2 + " time(s)");
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
@@ -637,7 +640,7 @@ split {
       var panel = vars.keepWatchers[i];
       if (panel.Old == 0 && panel.Current == 1) {
         string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
-        print(color + " keep panel has been solved");
+        vars.log(color + " keep panel has been solved");
         return true;
       }
     }
@@ -645,7 +648,7 @@ split {
     for (int i=0; i<vars.multiWatchers.Count; i++) {
       var panel = vars.multiWatchers[i];
       if (panel.Old == 0 && panel.Current == 1) {
-        print("Completed multipanel "+i);
+        vars.log("Completed multipanel "+i);
         return true;
       }
     }
@@ -653,7 +656,7 @@ split {
   if (settings["Split when completing the first mountain floor"]) {
     // Increases gradually from 0 to 1
     if (vars.mountainDoor.Old == 0.0 && vars.mountainDoor.Current > 0.0) {
-      print("Mountain floor 1 door started opening");
+      vars.log("Mountain floor 1 door started opening");
       return true;
     }
   }
@@ -671,7 +674,7 @@ split {
       );
     }
     if (settings["Start/split on challenge start"]) {
-      print("Started the challenge");
+      vars.log("Started the challenge");
       return true;
     }
   }
@@ -679,7 +682,7 @@ split {
     int epCount = 0;
     foreach (var watcher in vars.obeliskWatchers) epCount += watcher.Current;
     if (epCount > vars.epCount) {
-      print("Solved EP #" + epCount);
+      vars.log("Solved EP #" + epCount);
       vars.epCount = epCount;
       return true;
     }
