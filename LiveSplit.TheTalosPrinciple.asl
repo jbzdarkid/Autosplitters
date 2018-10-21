@@ -49,7 +49,6 @@ startup {
     System.IO.File.Create(vars.logFilePath);
     vars.log("Autosplitter loaded, log file created");
   }
-
 }
 
 init {
@@ -134,7 +133,6 @@ init {
     fs.Close();
   } catch {} // May fail if file doesn't exist.
   vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
-
 }
 
 exit {
@@ -152,32 +150,41 @@ update {
 }
 
 start {
-  if (settings["Don't start the run if cheats are active"] &&
-    vars.cheatFlags.Current != 0) {
-    vars.log("Not starting the run because of cheat flags: "+vars.cheatFlags.Current);
-    return false;
+  if (vars.cheatFlags.Current != 0) {
+    vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
+    if (settings["Don't start the run if cheats are active"]) {
+      vars.log("Not starting the run because of cheats");
+      return false;
+    }
   }
-  // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
-  if (vars.line.StartsWith("Started simulation on") && (vars.line.Contains("Cloud_1_01.wld") || vars.line.Contains("DLC_01_Intro.wld'"))) {
-    vars.log("Started a new run from a normal starting world.");
-    vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
+  Action<string> startGame = (string world) => {
+    vars.currentWorld = world;
     vars.lastSigil = "";
     vars.lastLines = 0;
     vars.adminEnding = false;
     vars.introCutscene = true;
     timer.IsGameTimePaused = true;
+  };
+
+  // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
+  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("Cloud_1_01.wld")) {
+    vars.log("Started a new Talos run in A1");
+    startGame("Content/Talos/Levels/Cloud_1_01.wld");
+    return true;
+  }
+
+  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("DLC_01_Intro.wld'")) {
+    vars.log("Started a new Gehenna run in DLC_01");
+    startGame("Content/Talos/Levels/DLC_01_Intro.wld");
     return true;
   }
 
   if (settings["Start the run in any world"] &&
     vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
-    vars.log("Started a new run from a non-normal starting world.");
-    vars.currentWorld = "[Initial World]"; // Not parsing this because it's hard
-    vars.lastSigil = "";
-    vars.lastLines = 0;
-    vars.adminEnding = false;
+    vars.log("Started a new run from a non-normal starting world:");
+    vars.log(vars.line);
+    startGame("[Initial World]"); // Not parsing this because it's hard
     vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
-    timer.IsGameTimePaused = true;
     return true;
   }
 }
@@ -288,12 +295,12 @@ split {
       return true; // Working around a custom arranger called 'Door_Dome'
     }
     if (puzzle.StartsWith("SecretDoor")) {
-      return settings["Split on Nexus gold tetromino star doors"];
+      return settings["Split on Nexus gold star doors"];
     }
     if (puzzle.StartsWith("Nexus")) {
       return settings["Split on Nexus red tower doors"];
     }
-    if (puzzle == "AlternativeEding") {
+    if (puzzle.StartsWith("AlternativeEding")) {
       return settings["Split on the Nexus gray Floor 6 door"];
     }
     if (puzzle.StartsWith("DLC_01_Secret")) {
