@@ -4,18 +4,6 @@ state("witness64_d3d11") {}
 // TODO: Dynamically create list of configuration files (and therefore settings)
 
 startup {
-  // Environmental puzzles/patterns, the +135
-  settings.Add("Split on environmental patterns", false);
-  // Tracked via obelisks, which report their counts
-  vars.obelisks = new List<int> {
-    0x00098, // Treehouse
-    0x00264, // Monastery
-    0x0035A, // Desert
-    0x00368, // Mountain
-    0x0A16D, // Town
-    0x22074, // Shadows
-  };
-
   settings.Add("Split on all panels (solving and non-solving)", false);
   // Panels which are solved multiple times in a normal run
   vars.multiPanels = new List<int>{
@@ -41,63 +29,49 @@ startup {
     0x09FCD, // Mountain Multi
     0x09EEC, // Mountain Elevator
   };
-
   vars.keepWalkOns = new List<int>{
     0x033EB, // Yellow
     0x01BEA, // Purple
     0x01CD4, // Green
     0x01D40, // Blue
   };
-
   vars.multipanel = new List<int>{
     0x09FCD, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2, 0x09FD3
   };
 
-  // 11 lasers which unlock the mountain-top box
-  settings.Add("Split on lasers", true);
-  vars.lasers = new List<int>{
-    0x032F6, // Town
-    0x03609, // Desert
-    0x0360E, // Symmetry
-    0x0360F, // Keep Front
-    0x03318, // Keep Rear
-    0x03613, // Quarry
-    0x03614, // Treehouse
-    0x03616, // Swamp
-    0x03617, // Jungle
-    0x09DE1, // Bunker
-    0x17CA5, // Monastery
-    0x19651, // Shadows
+  // Environmental puzzles/patterns, the +135
+  settings.Add("Split on environmental patterns", false);
+  // Tracked via obelisks, which report their counts
+  vars.obelisks = new List<int> {
+    0x00098, // Treehouse
+    0x00264, // Monastery
+    0x0035A, // Desert
+    0x00368, // Mountain
+    0x0A16D, // Town
+    0x22074, // Shadows
   };
 
-  // One-off splits (usually to accompany 11 lasers splits)
-  settings.Add("Split on tutorial door", true);
-  settings.Add("Split when starting the boat", false);
-  settings.Add("Split on greenhouse elevator", false);
-  settings.Add("Split when completing the first mountain floor", false);
-  settings.Add("Split on mountain elevator", false);
-  settings.Add("Split on final elevator", true);
-  settings.Add("Start/split on challenge start", false);
 
   // Other misc settings
+  settings.Add("Start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
-  settings.Add("Split on challenge end", false);
+
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
 
-  settings.Add("configs", false, "Split based on configuration file:");
   vars.configFiles = new List<string>();
   string currentDir = Directory.GetCurrentDirectory();
   if (System.IO.File.Exists(currentDir + "\\witness_config.txt")) {
     vars.configFiles.Add("witness_config.txt");
   }
   string[] files = System.IO.Directory.GetFiles(currentDir, "*.witness_config");
-  for (int i=0; i<files.Length; i++) {
-    vars.configFiles.Add(files[i].Split('\\').Last());
+  foreach (var file in files) {
+    vars.configFiles.Add(file.Split('\\').Last());
   }
-  for (int i=0; i<vars.configFiles.Count; i++) {
-    settings.Add(vars.configFiles[i], false, null, "configs");
+  settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
+  foreach (var configFile in vars.configFiles) {
+    settings.Add(configFile, false, null, "configs");
   }
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
@@ -183,9 +157,6 @@ init {
     throw new Exception("Could not find door offset!");
   }
   vars.doorOffset = game.ReadValue<int>(ptr);
-  vars.mountainDoor = new MemoryWatcher<float>(new DeepPointer(
-    basePointer, 0x18, 0x9E54*8, vars.doorOffset
-  ));
 
   // Entity_Record_Player::power_on()
   ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
@@ -353,24 +324,12 @@ init {
       foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999);
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0);
-
-
-
-
-
-
-
-
-
-
-
-
-
     } else if (settings["configs"]) {
       string[] lines = {""};
-      for (int i=0; i<vars.configFiles.Count; i++) {
-        if (settings[vars.configFiles[i]]) {
-          lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  vars.configFiles[i]);
+      foreach (var configFile in vars.configFiles) {
+        if (settings[configFile]) {
+          lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  configFile);
+          vars.log("Selected config file: " + configFile);
           break;
         }
       }
@@ -378,16 +337,19 @@ init {
       vars.configWatchers = new MemoryWatcherList();
       string mode = "";
       int version = 0;
-      foreach (var line in lines) {
+      for (int i=0; i<lines.Length; i++) {
+        var line = lines[i].Split('#')[0]; // First, strip comments
+        line = line.Trim();
+        if (line == "") continue; // No reason to process empty lines
+
         if (line.Contains(':')) {
           var parts = line.Split(':');
           mode = parts[0];
           if (mode == "version") version = Int32.Parse(parts[1]);
           continue;
         }
-        var unparsed = line.Split('#')[0];
-        if (unparsed == "") continue;
-        int id = Convert.ToInt32(unparsed.Trim(), 16);
+
+        int id = Convert.ToInt32(line, 16);
         if (mode == "panels") {
           vars.configWatchers.Add(new MemoryWatcher<int>(
             createPointer(id, vars.completedOffset)));
@@ -404,43 +366,6 @@ init {
         vars.log("Watching " + mode + ": 0x" + id.ToString("X"));
       }
       vars.configWatchers.UpdateAll(game);
-
-
-
-
-
-
-
-
-
-
-
-    } else {
-      // Individual panels use the completed offset, since they just need to be completed the first time you exit them
-      if (settings["Split on lasers"]) {
-        foreach (var laser in vars.lasers) {
-          vars.addPanel(laser, 1);
-        }
-      }
-      if (settings["Split on tutorial door"]) {
-        vars.addPanel(0x0362A, 1);
-      }
-      if (settings["Split when starting the boat"]) {
-        vars.addPanel(0x34D97, 1);
-      }
-      if (settings["Split on greenhouse elevator"]) {
-        vars.addPanel(0x0A07A, 1);
-      }
-      if (settings["Split on mountain elevator"]) {
-        vars.addPanel(0x09EEC, 1);
-      }
-      if (settings["Split on final elevator"]) {
-        vars.addPanel(0x3D9AA, 1);
-      }
-    }
-    if (settings["Split on challenge end"]) {
-      vars.addPanel(0x1C31A, 0); // Right pillar
-      vars.addPanel(0x1C31B, 0); // Left pillar
     }
   });
   vars.initPuzzles();
@@ -519,7 +444,6 @@ update {
   if (vars.gameFrames.Current == 0) vars.startTime = 0.0;
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
-  vars.mountainDoor.Update(game);
   vars.eyelidStart.Update(game);
   vars.keepWatchers.UpdateAll(game);
   vars.multiWatchers.UpdateAll(game);
@@ -565,7 +489,7 @@ start {
       return true;
     }
   }
-  if (settings["Start/split on challenge start"]) {
+  if (settings["Start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.startTime = vars.time.Current;
       vars.deathCount = 0;
@@ -604,9 +528,11 @@ split {
     // 3: Exited
     // 4: Pending negation
     // 5: Floor Meta Subpanel error
-    if (state == 1 || state == 4 ||
+    if (state == 1 || state == 4
       // Cinema input panel exits in state 3 on the first solve
-      (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0)
+      || (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0)
+      // Challenge start exits in state 3 sometimes
+      || (vars.activePanel == 0xA3333 && state == 3)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Solve count
@@ -615,11 +541,6 @@ split {
       );
       vars.log("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
       vars.activePanel = 0;
-      if (settings["Split on challenge end"] && (panel == 0x1C31A || panel == 0x1C31B)) {
-        if (vars.panels[0x1C31A].Item1 == 1 && vars.panels[0x1C31B].Item1 == 1) {
-          return true;
-        }
-      }
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
@@ -633,26 +554,14 @@ split {
     }
   }
   foreach (var configWatch in vars.configWatchers) {
-    if (configWatch.Old == 0 && configWatch.Current == 1) {
+    // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
+    if (configWatch.Old == 0 && configWatch.Current > 0) {
       return true;
     }
   }
 
   // TODO: Much of this is unneeded w/ config
   if (settings["Split on all panels (solving and non-solving)"]) {
-    // Challenge starting panel unsolves itself
-    if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-      var puzzleData = vars.panels[0x0A333];
-      vars.panels[0x0A333] = new Tuple<int, int, DeepPointer>(
-        puzzleData.Item1 + 1, // Solve count
-        puzzleData.Item2,     // Maximum split count
-        puzzleData.Item3      // State pointer
-      );
-      vars.log("Panel 0xA333 has been solved " + vars.panels[0x0A333].Item1 + " of " + puzzleData.Item2 + " time(s)");
-      if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
-        return true;
-      }
-    }
     // Keep panels don't trigger nicely since they never become the active panel
     for (int i=0; i<vars.keepWatchers.Count; i++) {
       var panel = vars.keepWatchers[i];
@@ -666,34 +575,9 @@ split {
     for (int i=0; i<vars.multiWatchers.Count; i++) {
       var panel = vars.multiWatchers[i];
       if (panel.Old == 0 && panel.Current == 1) {
-        vars.log("Completed multipanel "+i);
+        vars.log("Completed multipanel " + i);
         return true;
       }
-    }
-  }
-  if (settings["Split when completing the first mountain floor"]) {
-    // Increases gradually from 0 to 1
-    if (vars.mountainDoor.Old == 0.0 && vars.mountainDoor.Current > 0.0) {
-      vars.log("Mountain floor 1 door started opening");
-      return true;
-    }
-  }
-  if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-    if (settings["Split on challenge end"]) {
-      vars.panels[0x1C31A] = new Tuple<int, int, DeepPointer>(
-        0,
-        vars.panels[0x1C31A].Item2,
-        vars.panels[0x1C31A].Item3
-      );
-      vars.panels[0x1C31B] = new Tuple<int, int, DeepPointer>(
-        0,
-        vars.panels[0x1C31B].Item2,
-        vars.panels[0x1C31B].Item3
-      );
-    }
-    if (settings["Start/split on challenge start"]) {
-      vars.log("Started the challenge");
-      return true;
     }
   }
   if (settings["Split on environmental patterns"]) {

@@ -1,0 +1,38 @@
+# This is a comment.
+# Once a # is placed in a line, no further characters in the line will be processed.
+# You can use them to add notes to a line, or to temporarily disable a line.
+# I use them to give a helpful name to the panel IDs.
+
+version: 1
+panels: # List of panels that you want to split on. Each panel will only split once.
+# I've included here all the panels that used to be splitter settings.
+0x032F5 # Town Laser
+0x03608 # Desert Laser
+0x0360D # Symmetry Laser
+0x0360E # Keep Front Laser
+0x03612 # Quarry Laser
+0x03613 # Treehouse Laser
+0x03615 # Swamp Laser
+0x03616 # Jungle Laser
+0x09DE0 # Bunker Laser
+0x17CA4 # Monastery Laser
+0x19650 # Shadows Laser
+0x09F7F # 7 & 11 Laser Box
+0x03629 # Tutorial Door
+0x34D96 # Boat Map (aka starting the boat)
+0x0A079 # Bunker Elevator
+0x09EEB # Mountain Elevator
+0x3D9A9 # Final Elevator (aka wonkavator)
+0x0A332 # Challenge Start
+0x1C31A # Challenge Left Pillar
+0x1C319 # Challenge Right Pillar
+
+multipanels: # Split every single time this panel ID is solved.
+# Useful for panels (like town triple) that are solved multiple times.
+
+eps: # Environmental Puzzles/Patterns.
+# I've included here all the EPs that used to be splitter settings.
+0x339B6 # Eclipse
+
+doors: # This will split when the door starts opening
+0x9E54 # First Mountain Floor
