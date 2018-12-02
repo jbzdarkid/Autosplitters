@@ -170,9 +170,9 @@ init {
   if (ptr == IntPtr.Zero) {
     throw new Exception("Could not find door offset!");
   }
-  int doorOffset = game.ReadValue<int>(ptr);
+  vars.doorOffset = game.ReadValue<int>(ptr);
   vars.mountainDoor = new MemoryWatcher<float>(new DeepPointer(
-    basePointer, 0x18, 0x9E54*8, doorOffset
+    basePointer, 0x18, 0x9E54*8, vars.doorOffset
   ));
 
   // Entity_Record_Player::power_on()
@@ -213,7 +213,7 @@ init {
     "Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
-    + " | Door offset: "+doorOffset.ToString("X")
+    + " | Door offset: "+vars.doorOffset.ToString("X")
     + " | Door current: "+vars.doorCurrent.ToString("X")
     + " | Door target: "+vars.doorTarget.ToString("X")
     + " | Record Power offset: "+recordPowerOffset.ToString("X")
