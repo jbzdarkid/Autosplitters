@@ -86,7 +86,19 @@ startup {
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
 
-  settings.Add("Split based on configuration file", false);
+  settings.Add("configs", false, "Split based on configuration file:");
+  vars.configFiles = new List<string>();
+  string currentDir = Directory.GetCurrentDirectory();
+  if (System.IO.File.Exists(currentDir + "\\witness_config.txt")) {
+    vars.configFiles.Add("witness_config.txt");
+  }
+  string[] files = System.IO.Directory.GetFiles(currentDir, "*.witness_config");
+  for (int i=0; i<files.Length; i++) {
+    vars.configFiles.Add(files[i].Split('\\').Last());
+  }
+  for (int i=0; i<vars.configFiles.Count; i++) {
+    settings.Add(vars.configFiles[i], false, null, "configs");
+  }
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
   vars.log = (Action<string>)((string logLine) => {
@@ -354,10 +366,16 @@ init {
 
 
 
-    } else if (settings["Split based on configuration file"]) {
-      vars.configWatchers = new MemoryWatcherList();
-      string[] lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\witness_config.txt");
+    } else if (settings["configs"]) {
+      string[] lines = {""};
+      for (int i=0; i<vars.configFiles.Count; i++) {
+        if (settings[vars.configFiles[i]]) {
+          lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  vars.configFiles[i]);
+          break;
+        }
+      }
 
+      vars.configWatchers = new MemoryWatcherList();
       string mode = "";
       int version = 0;
       foreach (var line in lines) {
