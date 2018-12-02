@@ -68,7 +68,7 @@ state("BattleBlockTheater") {
   int squareY     : 0x315420, 0x274;
   byte levelWidth : 0x315420, 0x20, 0x109;
   byte levelHeight: 0x315420, 0x20, 0x10A;
-*/  
+*/
 }
 
 startup {
@@ -83,6 +83,14 @@ startup {
   // For IL runs
   settings.Add("Start when entering a chapter instead of selecting a loadout", false);
   settings.Add("Reset when exiting a chapter", false);
+
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_battleblock.log";
+  vars.log = (Action<string>)((string logLine) => {
+    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    // AppendAllText will create the file if it doesn't exist.
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  vars.log("Autosplitter loaded");
 }
 
 init {
@@ -96,7 +104,7 @@ init {
         vars.tc = component;
         vars.tcs = vars.tc.Settings;
         vars.updateText = true;
-        print("Found text component at " + component);
+        vars.log("Found text component at " + component);
         break;
       }
     }
@@ -115,14 +123,14 @@ start {
     // Selected a loadout (0 -> non-0) while the game is not active
     if (old.loadout == 0 && current.loadout > 0) {
       vars.deathCount = current.deathCount;
-      print("Started because the player confirmed an initial loadout");
+      vars.log("Started because the player confirmed an initial loadout");
       return true;
     }
   } else {
     // Entered a chapter from the lobby
     if (current.inLobby != 0) {
       if (old.animation != current.animation && current.animation == 93) {
-        print("Started because the player entered a chapter");
+        vars.log("Started because the player entered a chapter");
         vars.deathCount = current.deathCount;
         return true;
       }
@@ -132,12 +140,12 @@ start {
 
 reset {
   if (old.gameActive == 1 && current.gameActive == 0) {
-    print("Reset because the player returned to the main menu");
+    vars.log("Reset because the player returned to the main menu");
     return true;
   }
   if (settings["Reset when exiting a chapter"]) {
     if (old.inLobby == 0 && current.inLobby != 0) {
-      print("Reset because the player returned to the lobby");
+      vars.log("Reset because the player returned to the lobby");
       return true;
     }
   }
@@ -148,17 +156,17 @@ split {
   if (current.gameActive == 0) return false;
   if (current.inLobby != 0) {
     if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
-      print("Reached the boat (end of game)");
+      vars.log("Reached the boat (end of game)");
       return true;
     }
     return false; // Don't try to split otherwise, since we're not in a puzzle
   }
-  
+
   // Grabbed a key or used a teleporter -- only for finale levels because gem count will mess up timings otherwise
   if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
     // Levels 9-10 (10-11) are the two finales
     if (9 <= current.level && current.level <= 10) {
-      print("Completed Finale-"+(current.level-8));
+      vars.log("Completed Finale-"+(current.level-8));
       return settings["Split when completing finale levels"];
     }
   }
@@ -167,24 +175,24 @@ split {
     // Levels 0-8 (1-9) are acts 1-3
     if (0 <= old.level && old.level <= 8) {
       if (current.level == 14) {
-        print("Completed level "+(old.level+1)+" via secret exit");
+        vars.log("Completed level "+(old.level+1)+" via secret exit");
         return settings["Split when completing normal levels via secret exit"];
       } else if (current.level == old.level + 1) {
-        print("Completed level "+(old.level+1)+" and proceeded onto the next");
+        vars.log("Completed level "+(old.level+1)+" and proceeded onto the next");
         return settings["Split when completing normal levels"];
       } else if (current.level == 253) {
-        print("Completed level "+(old.level+1)+" and returned to lobby");
+        vars.log("Completed level "+(old.level+1)+" and returned to lobby");
         return settings["Split when completing normal levels"];
       }
     }
     // Levels 11-13 (12-14) are the encores
     if (11 <= old.level && old.level <= 13) {
-      print("Completed Encore-"+(old.level-10));
+      vars.log("Completed Encore-"+(old.level-10));
       return settings["Split when completing encore levels"];
     }
     // Level 14 (15) is the secret level
     if (old.level == 14) {
-      print("Completed secret level");
+      vars.log("Completed secret level");
       return settings["Split when completing secret levels"];
     }
   }
