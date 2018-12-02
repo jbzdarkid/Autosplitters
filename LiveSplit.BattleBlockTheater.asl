@@ -162,32 +162,34 @@ split {
     return false; // Don't try to split otherwise, since we're not in a puzzle
   }
 
-  // Grabbed a key or used a teleporter -- only for finale levels because gem count will mess up timings otherwise
+  // Grabbed a key or used a teleporter -- only for finale levels because gem count will mess up the timings otherwise
   if (old.animation != current.animation && (current.animation == 4 || current.animation == 126)) {
+    vars.log("Changed from " + old.animation + " to " + current.animation);
     // Levels 9-10 (10-11) are the two finales
     if (9 <= current.level && current.level <= 10) {
-      vars.log("Completed Finale-"+(current.level-8));
+      vars.log("Completed Finale-" + (current.level-8));
       return settings["Split when completing finale levels"];
     }
   }
   // Changed levels (farted / grabbed secret exit)
   if (current.level > old.level) { // Increased avoids some odd behavior at the beginning
+    vars.log("Changed levels from " + (old.level+1) + " to " + (current.level+1));
     // Levels 0-8 (1-9) are acts 1-3
     if (0 <= old.level && old.level <= 8) {
       if (current.level == 14) {
-        vars.log("Completed level "+(old.level+1)+" via secret exit");
+        vars.log("Completed level " + (old.level+1) + " via secret exit");
         return settings["Split when completing normal levels via secret exit"];
       } else if (current.level == old.level + 1) {
-        vars.log("Completed level "+(old.level+1)+" and proceeded onto the next");
+        vars.log("Completed level " + (old.level+1) + " and proceeded onto the next");
         return settings["Split when completing normal levels"];
       } else if (current.level == 253) {
-        vars.log("Completed level "+(old.level+1)+" and returned to lobby");
+        vars.log("Completed level " + (old.level+1) + " and returned to lobby");
         return settings["Split when completing normal levels"];
       }
     }
     // Levels 11-13 (12-14) are the encores
     if (11 <= old.level && old.level <= 13) {
-      vars.log("Completed Encore-"+(old.level-10));
+      vars.log("Completed Encore-" + (old.level-10));
       return settings["Split when completing encore levels"];
     }
     // Level 14 (15) is the secret level
