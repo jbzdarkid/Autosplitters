@@ -40,6 +40,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
     string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
@@ -167,26 +168,30 @@ start {
     timer.IsGameTimePaused = true;
   };
 
-  // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("Cloud_1_01.wld")) {
-    vars.log("Started a new Talos run in A1");
-    startGame("Content/Talos/Levels/Cloud_1_01.wld");
-    return true;
-  }
+  System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
+  System.Text.RegularExpressions.Match match = regex.Match(vars.line);
+  
+  if (match.Success) {
+    string world = match.Groups[1].Value;
 
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("DLC_01_Intro.wld'")) {
-    vars.log("Started a new Gehenna run in DLC_01");
-    startGame("Content/Talos/Levels/DLC_01_Intro.wld");
+    // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
+    if (world.Contains("Cloud_1_01.wld")) {
+      vars.log("Started a new Talos run in A1");
+      startGame(world);
+      return true;
+    }
+    if (world.Contains("DLC_01_Intro.wld'")) {
+      vars.log("Started a new Gehenna run in DLC_01");
+          startGame(world);
     return true;
-  }
-
-  if (settings["Start the run in any world"] &&
-    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
-    vars.log("Started a new run from a non-normal starting world:");
-    vars.log(vars.line);
-    startGame("[Initial World]"); // Not parsing this because it's hard
-    vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
-    return true;
+    }
+    if (settings["Start the run in any world"] && !world.Contains("Menu")) {
+      vars.log("Started a new run from a non-normal starting world:");
+      vars.log(vars.line);
+      vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
+      startGame(world);
+      return true;
+    }
   }
 }
 
