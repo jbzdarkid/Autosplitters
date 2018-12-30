@@ -8,25 +8,25 @@ startup {
   // Commonly used, defaults to true
   settings.Add("Don't start the run if cheats are active", true);
   settings.Add("Split on return to Nexus or DLC Hub", true);
-  settings.Add("Split on item unlocks", true);
-  settings.Add("Split on star collection in the Nexus", true);
-
-  settings.Add("Split on Nexus green world doors", true);
-  settings.Add("Split on Nexus red tower doors", false);
-  settings.Add("Split on the Nexus gray Floor 6 door", false);
-  settings.Add("Split on Nexus gold star doors", false); // (mostly) unused by the community
+  settings.Add("Split on item unlocks", true); 
 
   // Less commonly used, but still sees some use
-  settings.Add("Split on tetromino collection or DLC robot collection", false);
-  settings.Add("Split on star collection", false);
-  settings.Add("Split on exiting any terminal", false);
+  settings.Add("Split on tetromino or DLC robot collection", false);
+  settings.Add("Split on star collection anywhere", false);
+  settings.Add("Split on star collection in Nexus", false);
 
   // Rarely used
-  settings.Add("Split on Community% ending", false); // Community% completion -- mostly unused
-  settings.Add("Split when exiting Floor 5", false);
-  settings.Add("Start the run in any world", false);
-  settings.Add("(Custom/DLC) Split when solving any arranger", false);
-  settings.Add("(Custom/DLC) Split on any world transition", false);
+  settings.Add("Split on Community% ending", false);
+  settings.Add("Split on exiting any terminal", false);
+  settings.Add("Split on exiting Floor 5", false);
+
+  settings.Add("doors", true, "Split on solving Nexus doors"); 
+  settings.CurrentDefaultParent = "doors";
+  settings.Add("Green Hub doors", false);
+  settings.Add("Red Tower doors", false);
+  settings.Add("Grey Floor 6 door", false);
+  settings.Add("Star World doors", false);
+  settings.CurrentDefaultParent = null;
 
   settings.Add("worldsplits", true, "Don't split on sigil collections in these worlds:");
   settings.CurrentDefaultParent = "worldsplits";
@@ -37,6 +37,14 @@ startup {
   settings.Add("worldsplits-B4", false, "B4");
   settings.Add("worldsplits-B6", false, "B6");
   settings.Add("worldsplits-B8", false, "B8");
+  settings.CurrentDefaultParent = null;
+
+  settings.Add("custom", true, "Custom Map Settings");
+  settings.CurrentDefaultParent = "custom";
+  settings.Add("Start the run in any world", false);
+  settings.Add("Split on solving any arranger", false);
+  settings.Add("Split on any world transition", false);
+  settings.CurrentDefaultParent = null;
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
@@ -227,7 +235,7 @@ split {
        mapName.EndsWith("DLC_01_Hub.wld"))) {
       return true;
     }
-    if (settings["(Custom/DLC) Split on any world transition"]) {
+    if (settings["Split on any world transition"]) {
       return true;
     }
   }
@@ -275,15 +283,15 @@ split {
       }
     }
     if (sigil.StartsWith("**")) {
-      if (settings["Split on star collection"]) {
+      if (settings["Split on star collection anywhere"]) {
         return true;
       } else {
         if (vars.currentWorld.EndsWith("Nexus.wld")) {
-          return settings["Split on star collection in the Nexus"];
+          return settings["Split on star collection in Nexus"];
         }
       }
     } else {
-      return settings["Split on tetromino collection or DLC robot collection"];
+      return settings["Split on tetromino or DLC robot collection"];
     }
   }
 
@@ -294,27 +302,23 @@ split {
     if (puzzle.StartsWith("Mechanic")) {
       return settings["Split on item unlocks"];
     }
-    if (puzzle.StartsWith("Door") && settings["Split on Nexus green world doors"]) {
+    if (puzzle.StartsWith("Door") && settings["Green Hub doors"]) {
       return true; // Working around a custom arranger called 'Door_Dome'
     }
     if (puzzle.StartsWith("SecretDoor")) {
-      return settings["Split on Nexus gold star doors"];
+      return settings["Star World doors"];
     }
     if (puzzle.StartsWith("Nexus")) {
-      return settings["Split on Nexus red tower doors"];
+      return settings["Red Tower doors"];
     }
     if (puzzle.StartsWith("AlternativeEding")) {
-      return settings["Split on the Nexus gray Floor 6 door"];
-    }
-    if (puzzle.StartsWith("DLC_01_Secret")) {
-      return settings["(Custom/DLC) Split when solving any arranger"];
+      return settings["Grey Floor 6 door"];
     }
     if (puzzle.StartsWith("DLC_01_Hub")) {
       vars.adminEnding = true; // Admin puzzle door solved, so the Admin is saved.
-      return settings["(Custom/DLC) Split when solving any arranger"];
     }
     // If it's not one of the main game/DLC strings, then it must be a custom campaign
-    return settings["(Custom/DLC) Split when solving any arranger"];
+    return settings["Split on solving any arranger"];
   }
 
   // Miscellaneous
@@ -331,7 +335,7 @@ split {
   if (vars.currentWorld.EndsWith("Nexus.wld")) {
     if (vars.line == "Elohim speaks: Elohim-063_Nexus_Ascent_01") {
       vars.log("User exits floor 5 and starts ascending the tower");
-      return settings["Split when exiting Floor 5"];
+      return settings["Split on exiting Floor 5"];
     }
     if (vars.line == "USER: /transcend") {
       vars.log("Game completed via Transcendence ending.");
