@@ -36,7 +36,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_braid.log";
   vars.log = (Action<string>)((string logLine) => {
-    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
   try {
