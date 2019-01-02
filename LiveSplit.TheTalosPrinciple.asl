@@ -142,10 +142,14 @@ exit {
 
 update {
   if (vars.foundPointers == null) return false;
-  vars.line = vars.reader.ReadLine();
-  if (vars.line == null) return false; // If no line was read, don't run any other blocks.
-  vars.line = vars.line.Substring(16); // Removes the date and log level from the line
 
+  do {
+    vars.line = vars.reader.ReadLine();
+    if (vars.line == null) return false; // If no line was read, don't run any other blocks.
+    vars.line = vars.line.Substring(16); // Removes the date and log level from the line
+  // Bot nav errors spam the console much quicker than we can handle, causing delayed splitting
+  } while (vars.line.Contains("Player bot") && vars.line.Contains("failed to reach"));
+  
   vars.cheatFlags.Update(game);
   vars.isLoading.Update(game);
 }
