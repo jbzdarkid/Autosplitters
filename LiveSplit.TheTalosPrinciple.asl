@@ -1,8 +1,11 @@
 state("Talos") {}
 state("Talos_Unrestricted") {}
+state("Talos_VR") {}
+
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
-// TODO: Spanish version of "USER: /eternalize" is USER: /eternizar
+// TODO: Better initial world parsing:
+// var startRegex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
 
 startup {
   // Commonly used, defaults to true
@@ -49,6 +52,36 @@ startup {
     System.IO.File.Create(vars.logFilePath);
     vars.log("Autosplitter loaded, log file created");
   }
+
+  // In case the splitter is loaded while a run is ongoing
+  vars.introCutscene = false;
+  vars.isLoading = null;
+  vars.currentWorld = "";
+
+  // Stored in translation_All.txt as TermDlg.Endings.GatesCommand
+  vars.eternalizeStrings = new List<string>{
+    "USER: /eternalize", // English, French, Japanese, Simplified Chinese, Traditional Chinese
+    "USER: /eternare", // Italian
+    "USER: /eternizar", // Spanish, Portuguese
+    "USER: /prenesi u vječnost", // Croatian
+    "USER: /uwiecznienie", // Polish
+    "USER: /verewigen", // German
+    "USER: /увековечить", // Russian
+    "USER: /영생 부여" // Korean
+  };
+
+  // Stored in translation_All.txt as TermDlg.Endings.Tower_Command
+  vars.transcendenceStrings = new List<string>{
+    "USER: /prijeđi", // Croatian
+    "USER: /transcend", // English, French, Japanese, Simplified Chinese, Traditional Chinese
+    "USER: /transcendencja", // Polish
+    "USER: /transcender", // Portuguese
+    "USER: /transcendere", // Italian
+    "USER: /transzendieren", // German
+    "USER: /trascender", // Spanish
+    "USER: /переступить", // Russian
+    "USER: /초월", // Korean
+  };
 }
 
 init {
@@ -141,8 +174,13 @@ exit {
 
 update {
   if (vars.foundPointers == null) return false;
-  vars.line = vars.reader.ReadLine();
-  if (vars.line == null) return false; // If no line was read, don't run any other blocks.
+  while (true) {
+    vars.line = vars.reader.ReadLine();
+    if (vars.line == null) return false; // If no line was read, don't run any other blocks.
+    if (vars.line.StartsWith("ERR")) continue; // Filter out error-level logging, as it can be spammy when bots get stuck
+    break;
+  }
+  print(vars.line);
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
 
   vars.cheatFlags.Update(game);
@@ -193,7 +231,7 @@ start {
 reset {
   if (vars.line == "Saving talos progress upon game stop.") {
     vars.log("Stopped run because the game was stopped.");
-    return true; // Unique line vars.loged only when you stop the game
+    return true; // Unique line printed only when you stop the game
   }
 }
 
@@ -205,7 +243,7 @@ isLoading {
   // Pause the timer during the intro cutscene
   if (vars.introCutscene) return true;
   // Game is loading (restart checkpoint, level transition)
-  if (vars.isLoading.Current != 0) return true;
+  if (vars.isLoading != null && vars.isLoading.Current != 0) return true;
   return false;
 }
 
@@ -318,7 +356,8 @@ split {
     return settings["Split on exiting any terminal"];
   }
   if (vars.currentWorld.EndsWith("Islands_03.wld")) {
-    if (vars.line.StartsWith("USER:")) { // Line differs in languages, not the prefix
+    // There are various "tombstone messages", so consider any message as ending the run
+    if (vars.line.StartsWith("USER:")) {
       vars.log("Game completed via Messenger ending.");
       return true;
     }
@@ -328,11 +367,11 @@ split {
       vars.log("User exits floor 5 and starts ascending the tower");
       return settings["Split when exiting Floor 5"];
     }
-    if (vars.line == "USER: /transcend") {
+    if (vars.transcendenceStrings.Contains(vars.line)) {
       vars.log("Game completed via Transcendence ending.");
       return true;
     }
-    if (vars.line == "USER: /eternalize") {
+    if (vars.eternalizeStrings.Contains(vars.line)) {
       vars.log("Game completed via Eternalize ending.");
       return true;
     }
