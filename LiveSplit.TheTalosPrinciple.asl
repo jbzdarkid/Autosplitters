@@ -180,7 +180,6 @@ update {
     if (vars.line.StartsWith("ERR")) continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
-  print(vars.line);
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
 
   vars.cheatFlags.Update(game);
