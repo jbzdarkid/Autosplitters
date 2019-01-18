@@ -76,7 +76,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
   vars.log = (Action<string>)((string logLine) => {
-    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     // AppendAllText will create the file if it doesn't exist.
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });

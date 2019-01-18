@@ -36,7 +36,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_braid.log";
   vars.log = (Action<string>)((string logLine) => {
-    string time = System.DateTime.Now.ToString("dd/mm/yy hh:mm:ss:fff");
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
   try {
@@ -189,7 +189,7 @@ split {
 
     if (vars.completedLevels.ContainsKey(oldName)) {
       vars.log("Level completion state: " + vars.completedLevels[oldName]);
-      
+
       // Ensure that we don't try to split for a level again. This value will
       // be reset to false if a piece is collected in the level.
       if (vars.completedLevels[oldName] == false) {
