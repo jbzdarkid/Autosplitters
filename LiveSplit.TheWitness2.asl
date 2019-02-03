@@ -1,7 +1,6 @@
 state("witness64_d3d11") {}
 // TODO: "Split on lasers" should actually split on lasers, not laser panels
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
-// TODO: Dynamically create list of configuration files (and therefore settings)
 
 startup {
   settings.Add("Split on all panels (solving and non-solving)", false);
@@ -76,7 +75,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
   vars.log = (Action<string>)((string logLine) => {
-    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
     // AppendAllText will create the file if it doesn't exist.
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
@@ -350,20 +349,19 @@ init {
         }
 
         int id = Convert.ToInt32(line, 16);
+        MemoryWatcher watcher = null;
         if (mode == "panels") {
-          vars.configWatchers.Add(new MemoryWatcher<int>(
-            createPointer(id, vars.completedOffset)));
+          watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
         } else if (mode == "multipanels") {
-          vars.configWatchers.Add(new MemoryWatcher<int>(
-            createPointer(id, vars.solvedOffset)));
+          watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
         } else if (mode == "eps") {
-          vars.configWatchers.Add(new MemoryWatcher<int>(
-            createPointer(id, vars.epOffset)));
+          watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
         } else if (mode == "doors") {
-          vars.configWatchers.Add(new MemoryWatcher<float>(
-            createPointer(id, vars.doorOffset)));
+          watcher = new MemoryWatcher<float>(createPointer(id, vars.doorOffset));
         }
-        vars.log("Watching " + mode + ": 0x" + id.ToString("X"));
+        watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
+        vars.configWatchers.Add(watcher);
+        vars.log("Watching " + watcher.Name);
       }
       vars.configWatchers.UpdateAll(game);
     }
@@ -556,6 +554,7 @@ split {
   foreach (var configWatch in vars.configWatchers) {
     // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
     if (configWatch.Old == 0 && configWatch.Current > 0) {
+      vars.log("Splitting for config setting: " + configWatch.Name);
       return true;
     }
   }
