@@ -102,7 +102,6 @@ init {
     throw new Exception("Couldn't find active scene");
   }
   int root = (int)((long)game.ReadValue<int>(ptr) - (long)(modules.First().BaseAddress));
-  // print(root.ToString("X"));
   vars.gameStart = new MemoryWatcher<int>(new DeepPointer(root, 0x24));
   vars.sceneName = new StringWatcher(new DeepPointer(root, 0x24, 0x8, 0xC, 0xC), 100);
   vars.state = new MemoryWatcher<int>(new DeepPointer(root, 0x24, 0x8, 0x1C));
@@ -138,14 +137,7 @@ gameTime {
 }
 
 split {
-  if (vars.sceneTime.Old != vars.sceneTime.Current) {
-    if (settings[vars.sceneName.Current]) {
-      return true;
-    }
-  }
-  if (vars.sceneName.Old != vars.sceneName.Current && vars.sceneName.Old[2] == '7') {
-    // Chapter 7 doesn't return you to the boat, so it doesn't update sceneTime
-    // Except for 7-1, which updates when returning you to your chair.
+  if (vars.sceneName.Old != vars.sceneName.Current) {
     if (settings[vars.sceneName.Old]) {
       return true;
     }
