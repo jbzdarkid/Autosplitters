@@ -78,7 +78,7 @@ startup {
       part = 1;
       settings.Add(chapters[chapter], false, chapters[chapter], "sceneSplits");
     }
-    settings.Add(splitName, false, "Part " + part, chapters[chapter]);
+    settings.Add(splitName, true, "Part " + part, chapters[chapter]);
     part++;
   }
 }
@@ -106,7 +106,6 @@ init {
   vars.sceneName = new StringWatcher(new DeepPointer(root, 0x24, 0x8, 0xC, 0xC), 100);
   vars.state = new MemoryWatcher<int>(new DeepPointer(root, 0x24, 0x8, 0x1C));
   vars.time = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x20));
-  vars.sceneTime = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x24));
   vars.letter = new MemoryWatcher<float>(new DeepPointer(0x103F878, 0x1C, 0x8+0xA8));
 
   vars.watchers = new MemoryWatcherList() {
@@ -114,9 +113,9 @@ init {
     vars.sceneName,
     vars.state,
     vars.time,
-    vars.sceneTime,
     vars.letter
   };
+  vars.completedChapters = new HashSet<string>();
 }
 
 update {
@@ -124,6 +123,7 @@ update {
 }
 
 start {
+  vars.completedChapters.Clear();
   // Not the best, since it will start on load game too
   return vars.gameStart.Changed;
 }
@@ -138,8 +138,11 @@ gameTime {
 
 split {
   if (vars.sceneName.Old != vars.sceneName.Current) {
-    if (settings[vars.sceneName.Old]) {
-      return true;
+    if (!vars.completedChapters.Contains(vars.sceneName.Old)) {
+      vars.completedChapters.Add(vars.sceneName.Old);
+      if (settings[vars.sceneName.Old]) {
+        return true;
+      }
     }
   }
   if (settings["oneYearLater"]) {
