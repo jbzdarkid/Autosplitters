@@ -106,6 +106,7 @@ init {
   vars.sceneName = new StringWatcher(new DeepPointer(root, 0x24, 0x8, 0xC, 0xC), 100);
   vars.state = new MemoryWatcher<int>(new DeepPointer(root, 0x24, 0x8, 0x1C));
   vars.time = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x20));
+  vars.sceneTime = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x24));
   vars.letter = new MemoryWatcher<float>(new DeepPointer(0x103F878, 0x1C, 0x8+0xA8));
 
   vars.watchers = new MemoryWatcherList() {
@@ -113,6 +114,7 @@ init {
     vars.sceneName,
     vars.state,
     vars.time,
+    vars.sceneTime,
     vars.letter
   };
   vars.completedChapters = new HashSet<string>();
@@ -137,17 +139,24 @@ gameTime {
 }
 
 split {
-  if (vars.sceneName.Old != vars.sceneName.Current) {
-    if (!vars.completedChapters.Contains(vars.sceneName.Old)) {
-      vars.completedChapters.Add(vars.sceneName.Old);
-      if (settings[vars.sceneName.Old]) {
-        return true;
-      }
-    }
-  }
   if (settings["oneYearLater"]) {
     if (vars.state.Old == 2 && vars.state.Current == 3) return true;
   }
   // Any% completion
   if (vars.letter.Old == 225 && vars.letter.Current == 247.5) return true;
+
+  if (vars.completedChapters.Contains(vars.sceneName.Old)) continue
+
+  // Most splits are upon returning to the boat
+  if (vars.sceneTime.Old != vars.sceneTime.Current) {
+    vars.completedChapters.Add(vars.sceneName.Old);
+    return settings[vars.sceneName.Old];
+  }
+
+  // If that split didn't occur, then wait until the scene name changes.
+  // This applies to ch6 & ch7.
+  if (vars.sceneName.Old != vars.sceneName.Current) {
+    vars.completedChapters.Add(vars.sceneName.Old);
+    return settings[vars.sceneName.Old];
+  }
 }
