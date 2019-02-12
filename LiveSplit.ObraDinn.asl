@@ -145,7 +145,7 @@ split {
   // Any% completion
   if (vars.letter.Old == 225 && vars.letter.Current == 247.5) return true;
 
-  if (vars.completedChapters.Contains(vars.sceneName.Old)) continue
+  if (vars.completedChapters.Contains(vars.sceneName.Old)) return false;
 
   // Most splits are upon returning to the boat
   if (vars.sceneTime.Old != vars.sceneTime.Current) {
