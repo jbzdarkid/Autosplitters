@@ -530,7 +530,7 @@ split {
       // Cinema input panel exits in state 3 on the first solve
       || (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0)
       // Challenge start exits in state 3 sometimes
-      || (vars.activePanel == 0xA3333 && state == 3)
+      || (vars.activePanel == 0x0A333 && state == 3)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Solve count
