@@ -354,9 +354,21 @@ init {
         int id = Convert.ToInt32(line, 16);
         MemoryWatcher watcher = null;
         if (mode == "panels") {
-          watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
+          // watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
+          if (vars.keepWalkOns.Contains(id)) {
+            vars.addPanel(id, 0);
+            vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.solvedOffset)));
+          } else if (vars.multipanel.Contains(id)) {
+            vars.addPanel(id, 0);
+            vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.completedOffset)));
+          } else {
+            vars.addPanel(id, 1);
+          }
+          continue;
         } else if (mode == "multipanels") {
-          watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
+          // watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
+          vars.addPanel(id, 9999);
+          continue;
         } else if (mode == "eps") {
           watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
         } else if (mode == "doors") {
@@ -536,8 +548,8 @@ split {
       || (vars.activePanel == 0x0A333 && state == 3)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
-        puzzleData.Item1 + 1, // Solve count
-        puzzleData.Item2,     // Maximum split count
+        puzzleData.Item1 + 1, // Current solve count
+        puzzleData.Item2,     // Maximum solve count
         puzzleData.Item3      // State pointer
       );
       vars.log("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
