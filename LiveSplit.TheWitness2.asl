@@ -281,7 +281,7 @@ init {
     if (!vars.panels.ContainsKey(panel)) {
       int type = createPointer(panel-1, 0x8).Deref<int>(game);
       if (type == 0) {
-        vars.log("Got panel type 0! Split likely skipped.");
+        vars.log("Attempted to add panel 0x" + panel.ToString("X") + " but panel type was 0! This is likely due to an incorrect ID in your configuration file.");
       }
       if (type == panelType) {
         vars.panels[panel] = new Tuple<int, int, DeepPointer>(
@@ -328,7 +328,7 @@ init {
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0);
     } else if (settings["configs"]) {
-      string[] lines;
+      string[] lines = {""};
       foreach (var configFile in vars.configFiles) {
         if (settings[configFile]) {
           lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  configFile);
@@ -336,49 +336,53 @@ init {
           break;
         }
       }
+      if (lines.Length == 0) {
+        vars.log("Config file empty or no config file selected!");
+      } else {
+        string mode = "";
+        int version = 0;
+        for (int i=0; i<lines.Length; i++) {
+          var line = lines[i].Split('#')[0]; // First, strip comments
+          line = line.Trim();
+          if (line == "") continue; // No reason to process empty lines
 
-      string mode = "";
-      int version = 0;
-      for (int i=0; i<lines.Length; i++) {
-        var line = lines[i].Split('#')[0]; // First, strip comments
-        line = line.Trim();
-        if (line == "") continue; // No reason to process empty lines
-
-        if (line.Contains(':')) {
-          var parts = line.Split(':');
-          mode = parts[0];
-          if (mode == "version") version = Int32.Parse(parts[1]);
-          continue;
-        }
-
-        int id = Convert.ToInt32(line, 16);
-        MemoryWatcher watcher = null;
-        if (mode == "panels") {
-          // watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
-          if (vars.keepWalkOns.Contains(id)) {
-            vars.addPanel(id, 0);
-            vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.solvedOffset)));
-          } else if (vars.multipanel.Contains(id)) {
-            vars.addPanel(id, 0);
-            vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.completedOffset)));
-          } else {
-            vars.addPanel(id, 1);
+          if (line.Contains(':')) {
+            var parts = line.Split(':');
+            mode = parts[0];
+            if (mode == "version") version = Int32.Parse(parts[1]);
+            continue;
           }
-          continue;
-        } else if (mode == "multipanels") {
-          // watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
-          vars.addPanel(id, 9999);
-          continue;
-        } else if (mode == "eps") {
-          watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
-        } else if (mode == "doors") {
-          watcher = new MemoryWatcher<float>(createPointer(id, vars.doorOffset));
+
+          int id = Convert.ToInt32(line, 16);
+          MemoryWatcher watcher = null;
+          if (mode == "panels") {
+            // watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
+            if (vars.keepWalkOns.Contains(id)) {
+              vars.addPanel(id + 1, 0);
+              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.solvedOffset)));
+            } else if (vars.multipanel.Contains(id)) {
+              vars.addPanel(id + 1, 0);
+              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.completedOffset)));
+            } else {
+              print("Added panel: 0x" + id.ToString("X"));
+              vars.addPanel(id + 1, 1);
+            }
+            continue;
+          } else if (mode == "multipanels") {
+            // watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
+            vars.addPanel(id + 1, 9999);
+            continue;
+          } else if (mode == "eps") {
+            watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
+          } else if (mode == "doors") {
+            watcher = new MemoryWatcher<float>(createPointer(id, vars.doorOffset));
+          }
+          watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
+          vars.configWatchers.Add(watcher);
+          vars.log("Watching " + watcher.Name);
         }
-        watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
-        vars.configWatchers.Add(watcher);
-        vars.log("Watching " + watcher.Name);
+        vars.configWatchers.UpdateAll(game);
       }
-      vars.configWatchers.UpdateAll(game);
     }
   });
   vars.initPuzzles();
