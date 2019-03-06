@@ -310,13 +310,14 @@ init {
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
     vars.log("Loaded with EP count: "+vars.epCount);
     vars.panels.Clear();
+    vars.keepWatchers = new MemoryWatcherList();
+    vars.multiWatchers = new MemoryWatcherList();
+    vars.configWatchers = new MemoryWatcherList();
     if (settings["Split on all panels (solving and non-solving)"]) {
-      vars.keepWatchers = new MemoryWatcherList();
       foreach (var panel in vars.keepWalkOns) {
         vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.solvedOffset)));
       }
       vars.keepWatchers.UpdateAll(game);
-      vars.multiWatchers = new MemoryWatcherList();
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0);
         vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.completedOffset)));
@@ -327,7 +328,7 @@ init {
       // Boat speed panel should never split, it's too inconsistent
       vars.addPanel(0x34C80, 0);
     } else if (settings["configs"]) {
-      string[] lines = {""};
+      string[] lines;
       foreach (var configFile in vars.configFiles) {
         if (settings[configFile]) {
           lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  configFile);
@@ -336,7 +337,6 @@ init {
         }
       }
 
-      vars.configWatchers = new MemoryWatcherList();
       string mode = "";
       int version = 0;
       for (int i=0; i<lines.Length; i++) {
