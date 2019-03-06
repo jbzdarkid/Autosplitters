@@ -364,7 +364,6 @@ init {
               vars.addPanel(id + 1, 0);
               vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.completedOffset)));
             } else {
-              print("Added panel: 0x" + id.ToString("X"));
               vars.addPanel(id + 1, 1);
             }
             continue;
