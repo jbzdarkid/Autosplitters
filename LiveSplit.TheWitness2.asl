@@ -50,7 +50,6 @@ startup {
     0x22074, // Shadows
   };
 
-
   // Other misc settings
   settings.Add("Start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
@@ -124,6 +123,19 @@ init {
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
   int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
   vars.log("witness64_d3d11.globals = "+basePointer.ToString("X"));
+
+  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
+    return new DeepPointer(basePointer, 0x18, id*8, offset);
+  };
+  // First panel in the game
+  int panelType = createPointer(0x64, 0x8).Deref<int>(game);
+  if (panelType == 0) {
+    // Sleeping lags livesplit, but so does repeatedly throwing exceptions,
+    // and this doesn't also lag the game.
+    Thread.Sleep(1000);
+    throw new Exception("Couldn't find panel type!");
+  }
+  vars.log("Panel type: 0x"+panelType.ToString("X"));
 
   // judge_panel()
   ptr = scanner.Scan(new SigScanTarget(0,
@@ -265,15 +277,6 @@ init {
   // do_focus_mode_left_mouse_press()
   // 8B 05 ???????? 85 C0 74 5B
 
-  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
-    return new DeepPointer(basePointer, 0x18, id*8, offset);
-  };
-  // First panel in the game
-  int panelType = createPointer(0x64, 0x8).Deref<int>(game);
-  if (panelType == 0) {
-    throw new Exception("Couldn't find panel type!");
-  }
-  vars.log("Panel type: 0x"+panelType.ToString("X"));
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
     if (!vars.panels.ContainsKey(panel)) {
       int type = createPointer(panel-1, 0x8).Deref<int>(game);
