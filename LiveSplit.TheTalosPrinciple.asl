@@ -4,8 +4,6 @@ state("Talos_VR") {}
 
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
-// TODO: Better initial world parsing:
-// var startRegex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
 
 startup {
   // Commonly used, defaults to true
@@ -83,6 +81,8 @@ startup {
     "USER: /переступить", // Russian
     "USER: /초월", // Korean
   };
+  
+  vars.startRegex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
 }
 
 init {
@@ -190,42 +190,44 @@ update {
 }
 
 start {
-  if (vars.cheatFlags.Current != 0) {
-    vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
-    if (settings["Don't start the run if cheats are active"]) {
-      vars.log("Not starting the run because of cheats");
-      return false;
-    }
-  }
   Action<string> startGame = (string world) => {
     vars.currentWorld = world;
     vars.lastSigil = "";
     vars.lastLines = 0;
     vars.graySigils = 0;
     vars.adminEnding = false;
-    vars.introCutscene = true;
+    vars.introCutscene = false;
     timer.IsGameTimePaused = true;
   };
 
-  // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("Cloud_1_01.wld")) {
-    vars.log("Started a new Talos run in A1");
-    startGame("Content/Talos/Levels/Cloud_1_01.wld");
-    return true;
-  }
+  var match = vars.startRegex.Match(vars.line);
+  if (match.Success) {
+    if (vars.cheatFlags.Current != 0) {
+      vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
+      if (settings["Don't start the run if cheats are active"]) {
+        vars.log("Not starting the run because of cheats");
+        return false;
+      }
+    }
 
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("DLC_01_Intro.wld'")) {
-    vars.log("Started a new Gehenna run in DLC_01");
-    startGame("Content/Talos/Levels/DLC_01_Intro.wld");
-    return true;
-  }
-
-  if (settings["Start the run in any world"] &&
-    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
-    vars.log("Started a new run from a non-normal starting world:");
-    vars.log(vars.line);
-    startGame("[Initial World]"); // Not parsing this because it's hard
-    vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
+    string world = match.Groups[1].Value;
+    if (world.Contains("Cloud_1_01.wld") || world.Contains("DLC_01_Intro.wld")) {
+      vars.log("Started a new run from standard starting world with cutscene:");
+      vars.log(world);
+      startGame(world);
+      vars.introCutscene = true;
+      return true;
+    } else if (world.Contains("Demo.wld") || world.Contains("Bonus_PrototypeLobby.wld")) {
+      vars.log("Started a new run from standard starting world without cutscene:");
+      // We'll start the timer later
+    } else if (settings["Start the run in any world"] && !world.Contains("Menu")) {
+      vars.log("Started a new run from non-standard starting world, assuming no cutscene:");
+    } else {
+      return false;
+    }
+    
+    vars.log(world);
+    startGame(world);
     return true;
   }
 }
