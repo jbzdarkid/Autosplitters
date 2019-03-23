@@ -43,6 +43,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
     string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
@@ -177,7 +178,9 @@ update {
   while (true) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null) return false; // If no line was read, don't run any other blocks.
-    if (vars.line.StartsWith("ERR")) continue; // Filter out error-level logging, as it can be spammy when bots get stuck
+    //if (vars.line.Substring(9, 3) == "ERR") continue;
+    // This looks a little weird but it avoids creating a new string like a substring
+    if (vars.line.IndexOf("ERR", 9, 3) == 9) continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
