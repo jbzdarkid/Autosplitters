@@ -217,7 +217,9 @@ start {
       startGame(world);
       vars.introCutscene = true;
       return true;
-    } else if (world.Contains("Demo.wld") || world.Contains("Bonus_PrototypeLobby.wld")) {
+    } else if (world.Contains("Demo.wld")
+               || world.Contains("Demo_Simple.wld")
+               || world.Contains("Bonus_PrototypeLobby.wld")) {
       vars.log("Started a new run from standard starting world without cutscene:");
       // We'll start the timer later
     } else if (settings["Start the run in any world"] && !world.Contains("Menu")) {
