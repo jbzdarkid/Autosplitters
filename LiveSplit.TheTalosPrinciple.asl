@@ -110,65 +110,55 @@ init {
   logPath += "\\Log\\" + game.ProcessName + ".log";
   vars.log("Using log path: '" + logPath + "'");
 
-  if (game.Is64Bit()) {
-    ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
-      "44 39 25 ????????", // cmp [Talos.exe+target], r12d
-      "48 8B F9"           // mov rdi, rcx
-    ));
-    if (ptr == IntPtr.Zero) {
-      vars.log("Could not find x64 cheatFlags!");
-      return false;
-    }
-    int relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-    vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(
-      game.ReadValue<int>(ptr) + relativePosition
-    ));
+  // To find the loading pointer:
+  // (x64) AOB scan for C7 81 8C010000 01000000 48 8B
+  // (x86) AOB scan for C7 86 74010000 01000000 85 C9
+  // Start a new game.
+  // Set a breakpoint
+  // Add Address for ESI (x86) or RCX (x64)
+  // Pointer scan for that address
+  // Sort by Offset 4
+  // Find the Talos.exe+??? which has offsets 8, 0 (x86) or 10, 0 (x64)
+  // That ??? is the base value for the loading pointer. Other offsets are unchanged.
 
-    ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
-      "48 8B 0D ????????", // mov rcx, [Talos.exe+offset]
-      "48 8B 11",          // mov rdx, [rcx]
-      "FF 92 B0000000"     // call qword ptr [rdx+B0]
-    ));
-    if (ptr == IntPtr.Zero) {
-      vars.log("Could not find x64 isLoading!");
-      return false;
-    }
-    relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-    vars.isLoading = new MemoryWatcher<int>(new DeepPointer(
-      game.ReadValue<int>(ptr) + relativePosition,
-      0x10, 0x208 // Doesn't seem to change
-    ));
-  } else { // game.Is64Bit() == false
-    ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
-      "75 08",       // jne 8
-      "A1 ????????", // mov eax, [Talos.exe+target]
-      "5E"           // pop esi
-    ));
-    if (ptr == IntPtr.Zero) {
-      vars.log("Could not find x86 cheatFlags!");
-      return false;
-    }
-    vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(
-      game.ReadValue<int>(ptr) - (int)page.BaseAddress
-    ));
-
-    ptr = scanner.Scan(new SigScanTarget(2, // Taregetting byte 2
-      "8B 0D ????????", // mov ecx,[Talos.exe+target]
-      "8B 11",          // mov edx,[ecx]
-      "FF 52 58"        // call dword ptr [edx+58]
-    ));
-    if (ptr == IntPtr.Zero) {
-      vars.log("Could not find x86 isLoading!");
-      return false;
-    }
-    vars.isLoading = new MemoryWatcher<int>(new DeepPointer(
-      game.ReadValue<int>(ptr) - (int)page.BaseAddress,
-      0x08, 0x1C8 // Doesn't seem to change
-    ));
-    // x86 settings change pointer:
-    // 5E 5D C2 0400 C7 05 ???????? 01000000
+  vars.loadingFailed = false;
+  switch (modules.First().ModuleMemorySize) {
+    // TODO: 429074
+    case 35561472:
+      vars.log("Using version 326589 x64");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C3670));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17981D0, 0x10, 0x208));
+      break;
+    case 34160640:
+      vars.log("Using version 301136 x64");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
+      break;
+    case 24506368:
+      vars.log("Using version 326589 x86");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1273F48));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12540E8, 0x8, 0x1C8));
+      break;
+    case 23699456:
+      vars.log("Using version 301136 x86");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AF758));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118FA48, 0x8, 0x1C8));
+      break;
+    case 19599360:
+      vars.log("Using version 244371 x86");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B7724));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x10, 0x208));
+      break;
+    case 19681280:
+      vars.log("Using version 226087 x86");
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11CC724));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C6B44, 0x8, 0x1C8));
+      break;
+    default:
+      vars.log("Unknown game version. ModuleMemorySize = " + modules.First().ModuleMemorySize);
+      vars.loadingFailed = true;
+      break;
   }
-  vars.foundPointers = true;
 
   try { // Wipe the log file to clear out messages from last time
     FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
@@ -180,10 +170,11 @@ init {
 
 exit {
   timer.IsGameTimePaused = true;
+  vars.reader = null; // Free the lock on the talos logfile, so folders can be renamed/etc
 }
 
 update {
-  if (vars.foundPointers == null) return false;
+  if (vars.loadingFailed) return false;
   while (true) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null) return false; // If no line was read, don't run any other blocks.
