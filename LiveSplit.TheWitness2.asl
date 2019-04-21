@@ -90,21 +90,6 @@ init {
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
-  vars.deathCount = 0;
-  vars.updateText = false;
-  vars.tcs = null;
-  if (settings["Override first text component with a Failed Panels count"]) {
-    foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
-      if (component.GetType().Name == "TextComponent") {
-        vars.tc = component;
-        vars.tcs = vars.tc.Settings;
-        vars.updateText = true;
-        vars.log("Found text component at " + component);
-        break;
-      }
-    }
-  }
-
   // get_active_panel()
   IntPtr ptr = scanner.Scan(new SigScanTarget(3, // Targeting byte 3
     "48 8B 05 ????????", // mov rax, [witness64_d3d11.exe + offset]
@@ -387,6 +372,20 @@ init {
         vars.configWatchers.UpdateAll(game);
       }
     }
+
+    vars.deathCount = 0;
+    vars.updateText = false;
+    if (settings["Override first text component with a Failed Panels count"]) {
+      foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
+        if (component.GetType().Name == "TextComponent") {
+          vars.tc = component;
+          vars.tcs = vars.tc.Settings;
+          vars.updateText = true;
+          vars.log("Found text component at " + component);
+          break;
+        }
+      }
+    }
   });
   vars.initPuzzles();
 
@@ -474,7 +473,7 @@ update {
     vars.log(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
     vars.randomDoorsInjection();
   }
-  if (vars.tcs != null && (vars.updateText || old.deathCount != current.deathCount)) {
+  if (vars.updateText) {
     vars.tcs.Text1 = "Failed Panels:";
     vars.tcs.Text2 = vars.deathCount.ToString();
   }
@@ -504,7 +503,6 @@ start {
     vars.randomDoorsInjection();
     if (vars.startTime == 0.0) {
       vars.startTime = vars.time.Current;
-      vars.deathCount = 0;
       vars.initPuzzles();
       return true;
     }
@@ -512,7 +510,6 @@ start {
   if (settings["Start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.startTime = vars.time.Current;
-      vars.deathCount = 0;
       vars.initPuzzles();
       return true;
     }
