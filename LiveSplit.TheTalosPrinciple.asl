@@ -4,8 +4,6 @@ state("Talos_VR") {}
 
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
-// TODO: Better initial world parsing:
-// var startRegex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
 
 startup {
   // Commonly used, defaults to true
@@ -43,6 +41,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
     string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
@@ -82,6 +81,8 @@ startup {
     "USER: /переступить", // Russian
     "USER: /초월", // Korean
   };
+
+  vars.startRegex = new System.Text.RegularExpressions.Regex("^Started simulation on '(.*?)'");
 }
 
 init {
@@ -177,7 +178,7 @@ update {
   while (true) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null) return false; // If no line was read, don't run any other blocks.
-    if (vars.line.StartsWith("ERR")) continue; // Filter out error-level logging, as it can be spammy when bots get stuck
+    if (vars.line.Substring(9, 3) == "ERR") continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
@@ -204,25 +205,28 @@ start {
     timer.IsGameTimePaused = true;
   };
 
-  // Only start for A1 / Gehenna Intro, since restore backup / continue should mostly be on other worlds.
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("Cloud_1_01.wld")) {
-    vars.log("Started a new Talos run in A1");
-    startGame("Content/Talos/Levels/Cloud_1_01.wld");
-    return true;
-  }
+  var match = vars.startRegex.Match(vars.line);
+  if (match.Success) {
+    var world = match.Groups[1].Value;
+    // Main menu and settings count as 'worlds', ignore them
+    if (world.Contains("Menu")) return false;
+    // Randomizer settings world
+    if (world == "Content/Talos/Levels/Randomizer/Options.wld") return false;
+    vars.log("Started a new run in " + world);
 
-  if (vars.line.StartsWith("Started simulation on") && vars.line.Contains("DLC_01_Intro.wld'")) {
-    vars.log("Started a new Gehenna run in DLC_01");
-    startGame("Content/Talos/Levels/DLC_01_Intro.wld");
-    return true;
-  }
-
-  if (settings["Start the run in any world"] &&
-    vars.line.StartsWith("Started simulation on '") && !vars.line.Contains("Menu")) {
-    vars.log("Started a new run from a non-normal starting world:");
-    vars.log(vars.line);
-    startGame("[Initial World]"); // Not parsing this because it's hard
-    vars.introCutscene = false; // Don't wait for an intro cutscene for custom starts
+    vars.currentWorld = world;
+    vars.lastSigil = "";
+    vars.lastLines = 0;
+    vars.graySigils = 0;
+    vars.adminEnding = false;
+    timer.IsGameTimePaused = true;
+    // Unfortunately, I can't set this for randomizer, since the 'intro cutscene skip'
+    // line is logged immediately.
+    if (world == "Content/Talos/Levels/Cloud_1_01.wld" ||
+        world == "Content/Talos/Levels/DLC_01_Intro.wld") {
+      vars.log("Waiting to start IGT until the intro cutscene ends...");
+      vars.introCutscene = true;
+    }
     return true;
   }
 }
