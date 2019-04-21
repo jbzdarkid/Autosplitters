@@ -356,23 +356,19 @@ init {
           int id = Convert.ToInt32(line, 16);
           MemoryWatcher watcher = null;
           if (mode == "panels") {
-            if (vars.keepWalkOns.Contains(id)) {
-              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.completedOffset)));
-            } else if (vars.multipanel.Contains(id)) {
-              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.completedOffset)));
+            if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
+              watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
             } else {
               vars.addPanel(id + 1, 1);
+              continue;
             }
-            continue;
           } else if (mode == "multipanels") {
-            if (vars.keepWalkOns.Contains(id)) {
-              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.solvedOffset)));
-            } else if (vars.multipanel.Contains(id)) {
-              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.solvedOffset)));
+            if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
+              watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
             } else {
               vars.addPanel(id + 1, 9999);
+              continue;
             }
-            continue;
           } else if (mode == "eps") {
             watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
           } else if (mode == "doors") {
@@ -579,20 +575,23 @@ split {
     }
   }
 
-  // Keep panels don't trigger nicely since they never become the active panel
-  for (int i=0; i<vars.keepWatchers.Count; i++) {
-    var panel = vars.keepWatchers[i];
-    if (panel.Old == 0 && panel.Current == 1) {
-      vars.log("Solved a keep panel");
-      return true;
+  if (settings["Split on all panels (solving and non-solving)"]) {
+    // Keep panels don't trigger nicely since they never become the active panel
+    for (int i=0; i<vars.keepWatchers.Count; i++) {
+      var panel = vars.keepWatchers[i];
+      if (panel.Old == 0 && panel.Current == 1) {
+        string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
+        vars.log(color + " keep panel has been solved");
+        return true;
+      }
     }
-  }
-  // Avoid duplication for multipanel
-  for (int i=0; i<vars.multiWatchers.Count; i++) {
-    var panel = vars.multiWatchers[i];
-    if (panel.Old == 0 && panel.Current == 1) {
-      vars.log("Completed multipanel " + i);
-      return true;
+    // Avoid duplication for multipanel
+    for (int i=0; i<vars.multiWatchers.Count; i++) {
+      var panel = vars.multiWatchers[i];
+      if (panel.Old == 0 && panel.Current == 1) {
+        vars.log("Completed multipanel " + i);
+        return true;
+      }
     }
   }
   if (settings["Split on environmental patterns"]) {
