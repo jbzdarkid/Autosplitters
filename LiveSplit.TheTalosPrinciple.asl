@@ -188,23 +188,6 @@ update {
 }
 
 start {
-  if (vars.cheatFlags.Current != 0) {
-    vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
-    if (settings["Don't start the run if cheats are active"]) {
-      vars.log("Not starting the run because of cheats");
-      return false;
-    }
-  }
-  Action<string> startGame = (string world) => {
-    vars.currentWorld = world;
-    vars.lastSigil = "";
-    vars.lastLines = 0;
-    vars.graySigils = 0;
-    vars.adminEnding = false;
-    vars.introCutscene = true;
-    timer.IsGameTimePaused = true;
-  };
-
   var match = vars.startRegex.Match(vars.line);
   if (match.Success) {
     var world = match.Groups[1].Value;
@@ -212,6 +195,14 @@ start {
     if (world.Contains("Menu")) return false;
     // Randomizer settings world
     if (world == "Content/Talos/Levels/Randomizer/Options.wld") return false;
+
+    if (vars.cheatFlags.Current != 0) {
+      vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
+      if (settings["Don't start the run if cheats are active"]) {
+        vars.log("Not starting the run because of cheats");
+        return false;
+      }
+    }
     vars.log("Started a new run in " + world);
 
     vars.currentWorld = world;
