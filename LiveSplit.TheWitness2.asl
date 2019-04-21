@@ -1,5 +1,4 @@
 state("witness64_d3d11") {}
-// TODO: "Split on lasers" should actually split on lasers, not laser panels
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
 
 startup {
@@ -29,13 +28,13 @@ startup {
     0x09EEC, // Mountain Elevator
   };
   vars.keepWalkOns = new List<int>{
-    0x033EB, // Yellow
-    0x01BEA, // Purple
-    0x01CD4, // Green
-    0x01D40, // Blue
+    0x033EA, // Yellow
+    0x01BE9, // Purple
+    0x01CD3, // Green
+    0x01D3F, // Blue
   };
   vars.multipanel = new List<int>{
-    0x09FCD, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2, 0x09FD3
+    0x09FCC, 0x09FCE, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2
   };
 
   // Environmental puzzles/patterns, the +135
@@ -74,6 +73,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
   vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
     string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
     // AppendAllText will create the file if it doesn't exist.
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
@@ -315,12 +315,12 @@ init {
     vars.configWatchers = new MemoryWatcherList();
     if (settings["Split on all panels (solving and non-solving)"]) {
       foreach (var panel in vars.keepWalkOns) {
-        vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.solvedOffset)));
+        vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
       }
       vars.keepWatchers.UpdateAll(game);
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0);
-        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel-1, vars.completedOffset)));
+        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
       }
       vars.multiWatchers.UpdateAll(game);
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
@@ -356,20 +356,22 @@ init {
           int id = Convert.ToInt32(line, 16);
           MemoryWatcher watcher = null;
           if (mode == "panels") {
-            // watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
             if (vars.keepWalkOns.Contains(id)) {
-              vars.addPanel(id + 1, 0);
-              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.solvedOffset)));
+              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.completedOffset)));
             } else if (vars.multipanel.Contains(id)) {
-              vars.addPanel(id + 1, 0);
-              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id-1, vars.completedOffset)));
+              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.completedOffset)));
             } else {
               vars.addPanel(id + 1, 1);
             }
             continue;
           } else if (mode == "multipanels") {
-            // watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
-            vars.addPanel(id + 1, 9999);
+            if (vars.keepWalkOns.Contains(id)) {
+              vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.solvedOffset)));
+            } else if (vars.multipanel.Contains(id)) {
+              vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(id, vars.solvedOffset)));
+            } else {
+              vars.addPanel(id + 1, 9999);
+            }
             continue;
           } else if (mode == "eps") {
             watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
@@ -577,24 +579,20 @@ split {
     }
   }
 
-  // TODO: Much of this is unneeded w/ config
-  if (settings["Split on all panels (solving and non-solving)"]) {
-    // Keep panels don't trigger nicely since they never become the active panel
-    for (int i=0; i<vars.keepWatchers.Count; i++) {
-      var panel = vars.keepWatchers[i];
-      if (panel.Old == 0 && panel.Current == 1) {
-        string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
-        vars.log(color + " keep panel has been solved");
-        return true;
-      }
+  // Keep panels don't trigger nicely since they never become the active panel
+  for (int i=0; i<vars.keepWatchers.Count; i++) {
+    var panel = vars.keepWatchers[i];
+    if (panel.Old == 0 && panel.Current == 1) {
+      vars.log("Solved a keep panel");
+      return true;
     }
-    // Avoid duplication for multipanel
-    for (int i=0; i<vars.multiWatchers.Count; i++) {
-      var panel = vars.multiWatchers[i];
-      if (panel.Old == 0 && panel.Current == 1) {
-        vars.log("Completed multipanel " + i);
-        return true;
-      }
+  }
+  // Avoid duplication for multipanel
+  for (int i=0; i<vars.multiWatchers.Count; i++) {
+    var panel = vars.multiWatchers[i];
+    if (panel.Old == 0 && panel.Current == 1) {
+      vars.log("Completed multipanel " + i);
+      return true;
     }
   }
   if (settings["Split on environmental patterns"]) {
