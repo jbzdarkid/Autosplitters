@@ -52,6 +52,7 @@ startup {
   // Other misc settings
   settings.Add("Start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
+  settings.Add("Split on eclipse environmental start", false);
 
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
@@ -289,6 +290,8 @@ init {
           maxSolves, // Number of times to split
           createPointer(panel-1, vars.solvedOffset)
         );
+      } else { // Not a panel, insert a placeholder to avoid 'starting' again.
+        vars.panels[panel] = null;
       }
     }
   });
@@ -373,6 +376,9 @@ init {
             watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
           } else if (mode == "doors") {
             watcher = new MemoryWatcher<float>(createPointer(id, vars.doorOffset));
+          } else {
+            vars.log("Encountered unknown mode: " + mode);
+            continue;
           }
           watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
           vars.configWatchers.Add(watcher);
@@ -525,6 +531,10 @@ split {
       } else {
         vars.addPanel(panel, 0);
       }
+      if (panel == 0x339B9 && settings["Split on eclipse environmental start"]) {
+        vars.log("Splitting for eclipse start");
+        return true;
+      }
     }
   }
   if (vars.activePanel != 0) {
@@ -534,6 +544,7 @@ split {
       return false;
     }
     var puzzleData = vars.panels[panel];
+    if (puzzleData == null) return false; // Placeholder object.
     int state = puzzleData.Item3.Deref<int>(game);
     // Valid states:
     // 0: Unsolved
@@ -542,11 +553,11 @@ split {
     // 3: Exited
     // 4: Pending negation
     // 5: Floor Meta Subpanel error
-    if (state == 1 || state == 4
+    if (state == 1 || state == 4 ||
       // Cinema input panel exits in state 3 on the first solve
-      || (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0)
+      (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0) ||
       // Challenge start exits in state 3 sometimes
-      || (vars.activePanel == 0x0A333 && state == 3)
+      (vars.activePanel == 0x0A333 && state == 3)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Current solve count
@@ -562,7 +573,7 @@ split {
       vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
       vars.deathCount++;
-    } else if (state != 0) {
+    } else if (state != 0) { // This should not happen, there are no other known states.
       vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
     }
