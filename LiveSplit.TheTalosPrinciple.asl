@@ -83,6 +83,15 @@ startup {
   };
 
   vars.startRegex = new System.Text.RegularExpressions.Regex("^Started simulation on '(.*?)'");
+  // Level name, hasIntroCutscene
+  vars.knownStartingWorlds = new Dictionary<string, bool> {
+    {"Content/Talos/Levels/Cloud_1_01.wld", true}, // Talos
+    {"Content/Talos/Levels/DLC_01_Intro.wld", true}, // Gehenna
+    {"Content/Talos/Levels/Demo.wld", false}, // Demo
+    {"Content/Talos/Levels/Demo_Simple.wld", false}, // Short Demo
+    {"Content/Talos/Levels/Bonus_PrototypeLobby.wld", false}, // Prototype
+    {"Content/Talos/Levels/Randomizer/Cloud_1_01.wld", true} // Randomizer
+  };
 }
 
 init {
@@ -203,6 +212,12 @@ start {
         return false;
       }
     }
+
+    if (vars.knownStartingWorlds.ContainsKey(world)) {
+      vars.introCutscene = vars.knownStartingWorlds[world];
+    } else if (!settings["Start the run in any world"]) {
+      return false;
+    }
     vars.log("Started a new run in " + world);
 
     vars.currentWorld = world;
@@ -211,13 +226,6 @@ start {
     vars.graySigils = 0;
     vars.adminEnding = false;
     timer.IsGameTimePaused = true;
-    // Unfortunately, I can't set this for randomizer, since the 'intro cutscene skip'
-    // line is logged immediately.
-    if (world == "Content/Talos/Levels/Cloud_1_01.wld" ||
-        world == "Content/Talos/Levels/DLC_01_Intro.wld") {
-      vars.log("Waiting to start IGT until the intro cutscene ends...");
-      vars.introCutscene = true;
-    }
     return true;
   }
 }
