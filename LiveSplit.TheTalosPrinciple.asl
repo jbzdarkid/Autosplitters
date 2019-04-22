@@ -200,7 +200,7 @@ init {
     case 19587072:
       version = "243520/244371 x86 Moddable";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B4724));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11AE864, 0x10, 0x208));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11AE864, 0x8, 0x1C8));
       break;
     case 19668992:
       version = "226087 x86 Moddable";
@@ -229,7 +229,6 @@ exit {
 }
 
 update {
-  if (version == "unknown") return false;
   while (true) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null) return false; // If no line was read, don't run any other blocks.
@@ -238,8 +237,8 @@ update {
   }
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
 
-  vars.cheatFlags.Update(game);
-  vars.isLoading.Update(game);
+  if (vars.cheatFlags != null) {vars.cheatFlags.Update(game);}
+  if (vars.isLoading != null) {vars.isLoading.Update(game);}
 }
 
 start {
@@ -249,7 +248,7 @@ start {
     // Main menu and settings count as 'worlds', ignore them
     if (world.Contains("Menu")) return false;
 
-    if (vars.cheatFlags.Current != 0) {
+    if (vars.cheatFlags != null && vars.cheatFlags.Current != 0) {
       vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
       if (settings["Don't start the run if cheats are active"]) {
         vars.log("Not starting the run because of cheats");
