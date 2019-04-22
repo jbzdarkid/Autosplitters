@@ -149,58 +149,58 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C3670));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17981D0, 0x10, 0x208));
       break;
-    case 35549184:
-      version = "326589 x64 Moddable";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C0670));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17951D0, 0x10, 0x208));
-      break;
-    case 24506368:
-      version = "326589 x86";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1273F48));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12540E8, 0x8, 0x1C8));
-      break;
-    case 24494080:
-      version = "326589 x86 Moddable";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1270F48));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12510E8, 0x8, 0x1C8));
-      break;
-
     case 34160640:
       version = "301136 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
       break;
-    case 34148352:
-      version = "301136 x64 Moddable";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16458F0, 0x10, 0x208));
+
+    case 24506368:
+      version = "326589 x86";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1273F48));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12540E8, 0x8, 0x1C8));
       break;
     case 23699456:
       version = "301136 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AF758));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118FA48, 0x8, 0x1C8));
       break;
-    case 23687168:
-      version = "301136 x86 Moddable";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AC758));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118CA48, 0x8, 0x1C8));
-      break;
-
     case 19599360:
       version = "243520/244371 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B7724));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x10, 0x208));
       break;
-    case 19587072:
-      version = "243520/244371 x86 Moddable";
-      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B4724));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11AE864, 0x10, 0x208));
-      break;
-
     case 19681280:
       version = "226087 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11CC724));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C6B44, 0x8, 0x1C8));
+      break;
+
+    case 35549184:
+      version = "326589 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C0670));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17951D0, 0x10, 0x208));
+      break;
+    case 34148352:
+      version = "301136 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16458F0, 0x10, 0x208));
+      break;
+
+    case 24494080:
+      version = "326589 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1270F48));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12510E8, 0x8, 0x1C8));
+      break;
+    case 23687168:
+      version = "301136 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AC758));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118CA48, 0x8, 0x1C8));
+      break;
+    case 19587072:
+      version = "243520/244371 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B4724));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11AE864, 0x10, 0x208));
       break;
     case 19668992:
       version = "226087 x86 Moddable";
