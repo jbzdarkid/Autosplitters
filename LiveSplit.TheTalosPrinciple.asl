@@ -121,44 +121,44 @@ init {
   // Find the Talos.exe+??? which has offsets 8, 0 (x86) or 10, 0 (x64)
   // That ??? is the base value for the loading pointer. Other offsets are unchanged.
 
-  vars.loadingFailed = false;
   switch (modules.First().ModuleMemorySize) {
     // TODO: 429074
     case 35561472:
-      vars.log("Using version 326589 x64");
+      version = "326589 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C3670));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17981D0, 0x10, 0x208));
       break;
     case 34160640:
-      vars.log("Using version 301136 x64");
+      version = "301136 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
       break;
     case 24506368:
-      vars.log("Using version 326589 x86");
+      version = "326589 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1273F48));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12540E8, 0x8, 0x1C8));
       break;
     case 23699456:
-      vars.log("Using version 301136 x86");
+      version = "301136 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AF758));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118FA48, 0x8, 0x1C8));
       break;
     case 19599360:
-      vars.log("Using version 244371 x86");
+      version = "244371 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B7724));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x10, 0x208));
       break;
     case 19681280:
-      vars.log("Using version 226087 x86");
+      version = "226087 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11CC724));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C6B44, 0x8, 0x1C8));
       break;
     default:
-      vars.log("Unknown game version. ModuleMemorySize = " + modules.First().ModuleMemorySize);
-      vars.loadingFailed = true;
+      version = "unknown";
+      vars.log("ModuleMemorySize = " + modules.First().ModuleMemorySize);
       break;
   }
+  vars.log("Using game version " + version);
 
   try { // Wipe the log file to clear out messages from last time
     FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
@@ -174,7 +174,7 @@ exit {
 }
 
 update {
-  if (vars.loadingFailed) return false;
+  if (version == "unknown") return false;
   while (true) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null) return false; // If no line was read, don't run any other blocks.
