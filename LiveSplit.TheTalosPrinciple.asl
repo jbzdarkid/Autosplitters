@@ -142,6 +142,8 @@ init {
   // That ??? is the base value for the loading pointer. Other offsets are unchanged.
   // Moddable base values have always been exactly 0x3000 less so far, best to check again just in case though
 
+  vars.cheatFlags = null;
+  vars.isLoading = null;
   switch (page.ModuleMemorySize) {
     // TODO: 429074
     case 35561472:
@@ -154,6 +156,11 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
       break;
+    case 24354816 :
+      version = "252786 x64";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1507868));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x14FF960, 0x10, 0x208));
+      break;
 
     case 24506368:
       version = "326589 x86";
@@ -164,6 +171,16 @@ init {
       version = "301136 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AF758));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118FA48, 0x8, 0x1C8));
+      break;
+    case 19664896:
+      version = "252786 x86";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C6884));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C09C4, 0x8, 0x1C8));
+      break;
+    case 19648512:
+      version = "248828 x86";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C28A4));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11BC9E4, 0x8, 0x1C8));
       break;
     case 19599360:
       version = "243520/244371 x86";
@@ -186,6 +203,11 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16458F0, 0x10, 0x208));
       break;
+    case 24334336:
+      version = "252786 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1502848));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x14FA940, 0x10, 0x208));
+      break;
 
     case 24494080:
       version = "326589 x86 Moddable";
@@ -196,6 +218,16 @@ init {
       version = "301136 x86 Moddable";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AC758));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118CA48, 0x8, 0x1C8));
+      break;
+    case 19652608:
+      version = "252786 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C3884));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11BD9C4, 0x8, 0x1C8));
+      break;
+    case 19636224:
+      version = "248828 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11BF8A4));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B99E4, 0x8, 0x1C8));
       break;
     case 19587072:
       version = "243520/244371 x86 Moddable";
@@ -231,7 +263,7 @@ exit {
 update {
   while (true) {
     vars.line = vars.reader.ReadLine();
-    if (vars.line == null) return false; // If no line was read, don't run any other blocks.
+    if (vars.line == null || vars.line.Length < 16) return false; // If no line was read, don't run any other blocks.
     if (vars.line.Substring(9, 3) == "ERR") continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
