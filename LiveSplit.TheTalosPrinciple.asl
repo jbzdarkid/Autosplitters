@@ -122,7 +122,11 @@ init {
   // That ??? is the base value for the loading pointer. Other offsets are unchanged.
 
   switch (modules.First().ModuleMemorySize) {
-    // TODO: 429074
+    case 41930752:
+      version = "429074 x64";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E19B38));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1DFD450, 0x10, 0x1F8));
+      break;
     case 35561472:
       version = "326589 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C3670));
