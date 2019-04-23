@@ -536,12 +536,11 @@ split {
   }
   if (vars.activePanel != 0) {
     int panel = vars.activePanel;
-    if (!vars.panels.ContainsKey(panel)) {
+    if (!vars.panels.ContainsKey(panel) || vars.panels[panel] == null) {
       vars.activePanel = 0;
       return false;
     }
     var puzzleData = vars.panels[panel];
-    if (puzzleData == null) return false; // Placeholder object.
     int state = puzzleData.Item3.Deref<int>(game);
     // Valid states:
     // 0: Unsolved
@@ -575,6 +574,7 @@ split {
       vars.activePanel = 0;
     }
   }
+
   foreach (var configWatch in vars.configWatchers) {
     // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
     if (configWatch.Old == 0 && configWatch.Current > 0) {
