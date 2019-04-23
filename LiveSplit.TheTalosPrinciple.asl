@@ -185,7 +185,7 @@ init {
     case 19599360:
       version = "243520/244371 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B7724));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x10, 0x208));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x8, 0x1C8));
       break;
     case 19681280:
       version = "226087 x86";
