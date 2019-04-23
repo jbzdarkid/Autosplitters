@@ -90,16 +90,36 @@ startup {
     {"Content/Talos/Levels/Demo.wld", false}, // Demo
     {"Content/Talos/Levels/Demo_Simple.wld", false}, // Short Demo
     {"Content/Talos/Levels/Bonus_PrototypeLobby.wld", false}, // Prototype
-    {"Content/Talos/Levels/Randomizer/Cloud_1_01.wld", true} // Randomizer
+
+    {"Content/Talos/Levels/DATA_backup/DATA_backup.wld", false}, // Data Backup
+    {"Content/Talos/Levels/ExploitCollector/ExploitCollector.wld", false}, // Exploit Collector
+    {"Content/Talos/Levels/OnTopOfAll/OnTopOfAll.wld", false}, // On Top of All
+    {"Content/Talos/Levels/Only Puzzles 2/01-The Pyramid.wld", false}, // Only Puzzles 2
+    {"Content/Talos/Levels/Only Puzzles/Test1.wld", false}, // Only Puzzles
+    {"Content/Talos/Levels/Orbital/Orbital_Main.wld", false}, // Orbital
+    {"Content/Talos/Levels/query.wld", false}, // Query
+    {"Content/Talos/Levels/Limbo/Limbo.wld", false}, // Question Mark
+    {"Content/Talos/Levels/Rnm2/sky.wld", false}, // Ranamo Puzzles 2
+    {"Content/Talos/Levels/Ranamo/hub.wld", false}, // Ranamo Puzzles
+    {"Content/Talos/Levels/Randomizer/Cloud_1_01.wld", true}, // Randomizer
+    {"Content/Talos/Levels/Rebirth/Intro.wld", false}, // Rebirth
+    {"Content/Talos/Levels/Crystal/Room.wld", false}, // Schrodinger's Cat
+    {"Content/Talos/Levels/TutorialLevel/TutorialLevel.wld", false}, // Simple Tutorial Level
+    {"Content/Talos/Levels/Simplicity/Simplicity_Main.wld", false}, // Simplicity
+    {"Content/Talos/Levels/Xana/Episode1/Map01.wld", false}, // Sornukiz
+    {"Content/Talos/Levels/StepByStep/StepByStep.wld", false}, // Step By Step
+    {"Content/Experiments/World.wld", false}, // Strange Machine in Medieval
+    {"Content/Talos/Levels/The Day After/Intro.wld", false}, // The Day After
+    {"Content/Talos/Levels/JP_TheFlood/JPTF1.wld", false}, // The Flood
+    {"Content/Talos/Levels/TFD/TFD_01.wld", false}, // The Fourth Dimension
+    {"Content/Talos/Levels/Z_HolyDays/HD_Cloud_Xmas.wld", false}, // The Holy Days
+    {"Content/Talos/Levels/TheOnlyPuzzle/TheOnlyPuzzle_00.wld", false} // This is The Only Puzzle
   };
 }
 
 init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
-  var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
-  var ptr = IntPtr.Zero;
-  vars.foundPointers = false;
 
   string logPath;
   if (game.Is64Bit()) {
@@ -120,8 +140,11 @@ init {
   // Sort by Offset 4
   // Find the Talos.exe+??? which has offsets 8, 0 (x86) or 10, 0 (x64)
   // That ??? is the base value for the loading pointer. Other offsets are unchanged.
+  // Moddable base values have always been exactly 0x3000 less so far, best to check again just in case though
 
-  switch (modules.First().ModuleMemorySize) {
+  vars.cheatFlags = null;
+  vars.isLoading = null;
+  switch (page.ModuleMemorySize) {
     case 41930752:
       version = "429074 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E19B38));
@@ -137,6 +160,12 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
       break;
+    case 24354816 :
+      version = "252786 x64";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1507868));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x14FF960, 0x10, 0x208));
+      break;
+
     case 24506368:
       version = "326589 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1273F48));
@@ -147,22 +176,80 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AF758));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118FA48, 0x8, 0x1C8));
       break;
+    case 19664896:
+      version = "252786 x86";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C6884));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C09C4, 0x8, 0x1C8));
+      break;
+    case 19648512:
+      version = "248828 x86";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C28A4));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11BC9E4, 0x8, 0x1C8));
+      break;
     case 19599360:
-      version = "244371 x86";
+      version = "243520/244371 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B7724));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x10, 0x208));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B1864, 0x8, 0x1C8));
       break;
     case 19681280:
       version = "226087 x86";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11CC724));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C6B44, 0x8, 0x1C8));
       break;
+
+    case 35549184:
+      version = "326589 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C0670));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x17951D0, 0x10, 0x208));
+      break;
+    case 34148352:
+      version = "301136 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16458F0, 0x10, 0x208));
+      break;
+    case 24334336:
+      version = "252786 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1502848));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x14FA940, 0x10, 0x208));
+      break;
+
+    case 24494080:
+      version = "326589 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1270F48));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x12510E8, 0x8, 0x1C8));
+      break;
+    case 23687168:
+      version = "301136 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11AC758));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x118CA48, 0x8, 0x1C8));
+      break;
+    case 19652608:
+      version = "252786 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C3884));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11BD9C4, 0x8, 0x1C8));
+      break;
+    case 19636224:
+      version = "248828 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11BF8A4));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11B99E4, 0x8, 0x1C8));
+      break;
+    case 19587072:
+      version = "243520/244371 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11B4724));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11AE864, 0x8, 0x1C8));
+      break;
+    case 19668992:
+      version = "226087 x86 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x11C9724));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C3B44, 0x8, 0x1C8));
+      break;
+
     default:
-      version = "unknown";
+      version = "Unknown";
       vars.log("ModuleMemorySize = " + modules.First().ModuleMemorySize);
       break;
   }
-  vars.log("Using game version " + version);
+  vars.log("Using game version: " + version);
 
   try { // Wipe the log file to clear out messages from last time
     FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
@@ -178,17 +265,16 @@ exit {
 }
 
 update {
-  if (version == "unknown") return false;
   while (true) {
     vars.line = vars.reader.ReadLine();
-    if (vars.line == null) return false; // If no line was read, don't run any other blocks.
+    if (vars.line == null || vars.line.Length < 16) return false; // If no line was read, don't run any other blocks.
     if (vars.line.Substring(9, 3) == "ERR") continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
   vars.line = vars.line.Substring(16); // Removes the date and log level from the line
 
-  vars.cheatFlags.Update(game);
-  vars.isLoading.Update(game);
+  if (vars.cheatFlags != null) {vars.cheatFlags.Update(game);}
+  if (vars.isLoading != null) {vars.isLoading.Update(game);}
 }
 
 start {
@@ -197,10 +283,8 @@ start {
     var world = match.Groups[1].Value;
     // Main menu and settings count as 'worlds', ignore them
     if (world.Contains("Menu")) return false;
-    // Randomizer settings world
-    if (world == "Content/Talos/Levels/Randomizer/Options.wld") return false;
 
-    if (vars.cheatFlags.Current != 0) {
+    if (vars.cheatFlags != null && vars.cheatFlags.Current != 0) {
       vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
       if (settings["Don't start the run if cheats are active"]) {
         vars.log("Not starting the run because of cheats");
