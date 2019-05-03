@@ -121,12 +121,13 @@ init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
 
-  string logPath;
-  if (game.Is64Bit()) {
-    logPath = gameDir.TrimEnd("\\Bin\\x64".ToCharArray());
-  } else {
-    logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
+  var match = new System.Text.RegularExpressions.Regex("^.+The Talos Principle").Match(gameDir);
+  if (!match.Success) {
+    vars.log("Unable to match game path in: '" + gameDir + "'");
+    return false;
   }
+  
+  string logPath = match.Groups[0].Value;
   logPath += "\\Log\\" + game.ProcessName + ".log";
   vars.log("Using log path: '" + logPath + "'");
 
