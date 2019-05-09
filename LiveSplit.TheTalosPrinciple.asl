@@ -83,6 +83,8 @@ startup {
   };
 
   vars.startRegex = new System.Text.RegularExpressions.Regex("^Started simulation on '(.*?)'");
+  vars.tetroRegex = new System.Text.RegularExpressions.Regex("Backup and Save Talos Progress: tetromino \\((.*?)\\) picked");
+  
   // Level name, hasIntroCutscene
   vars.knownStartingWorlds = new Dictionary<string, bool> {
     {"Content/Talos/Levels/Cloud_1_01.wld", true}, // Talos
@@ -346,8 +348,10 @@ split {
       return true;
     }
   }
-  if (vars.line.StartsWith("Picked:")) { // Sigil/Robot and star collection
-    var sigil = vars.line.Substring(8);
+  // Sigil/Robot and star collection
+  var match = vars.tetroRegex.Match(vars.line);
+  if (match.Success) {
+    var sigil = match.Groups[1].Value;
     if (sigil == vars.lastSigil) {
       return false; // DLC Double-split prevention
     } else {
