@@ -82,8 +82,9 @@ startup {
     "USER: /초월", // Korean
   };
 
-  vars.startRegex = new System.Text.RegularExpressions.Regex("^Started simulation on '(.*?)'");
-  vars.tetroRegex = new System.Text.RegularExpressions.Regex("Backup and Save Talos Progress: tetromino \\((.*?)\\) picked");
+  vars.startRegex = new System.Text.RegularExpressions.Regex(@"^Started simulation on '(.*?)'");
+  vars.tetroRegex = new System.Text.RegularExpressions.Regex(@"^Backup and Save Talos Progress: tetromino \((.*?)\) picked$");
+  vars.robotRegex = new System.Text.RegularExpressions.Regex(@"^Tetromino (.*?) awarded.$");
   
   // Level name, hasIntroCutscene
   vars.knownStartingWorlds = new Dictionary<string, bool> {
@@ -348,10 +349,23 @@ split {
       return true;
     }
   }
+  
   // Sigil/Robot and star collection
-  var match = vars.tetroRegex.Match(vars.line);
-  if (match.Success) {
-    var sigil = match.Groups[1].Value;
+  var sigil = "[NONE]";
+  // On newer versions of the game there is a single line that always prints
+  if (vars.line.StartsWith("Picked: ")) {
+    sigil = vars.line.Substring(8);
+  // Unfortuantly on older versions we need to check multiple options
+  } else {
+    var tetroMatch = vars.tetroRegex.Match(vars.line);
+    var robotMatch = vars.robotRegex.Match(vars.line);
+    if (tetroMatch.Success) {
+      sigil = tetroMatch.Groups[1].Value;
+    } else if (robotMatch.Success) {
+      sigil = robotMatch.Groups[1].Value;
+    }
+  }
+  if (sigil != "[NONE]") {
     if (sigil == vars.lastSigil) {
       return false; // DLC Double-split prevention
     } else {
