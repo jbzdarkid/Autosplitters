@@ -63,7 +63,13 @@ startup {
   if (System.IO.File.Exists(currentDir + "\\witness_config.txt")) {
     vars.configFiles.Add("witness_config.txt");
   }
+  // Config files next to Livesplit.exe
   string[] files = System.IO.Directory.GetFiles(currentDir, "*.witness_config");
+  foreach (var file in files) {
+    vars.configFiles.Add(file.Split('\\').Last());
+  }
+  // Config files next to active splits file
+  files = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config");
   foreach (var file in files) {
     vars.configFiles.Add(file.Split('\\').Last());
   }
