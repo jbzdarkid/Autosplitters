@@ -58,23 +58,19 @@ startup {
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
 
-  vars.configFiles = new List<string>();
-  string currentDir = Directory.GetCurrentDirectory();
-  if (System.IO.File.Exists(currentDir + "\\witness_config.txt")) {
-    vars.configFiles.Add("witness_config.txt");
-  }
+  vars.configFiles = new Dictionary<string, string>();
   // Config files next to Livesplit.exe
-  string[] files = System.IO.Directory.GetFiles(currentDir, "*.witness_config");
+  string[] files = System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config");
   foreach (var file in files) {
-    vars.configFiles.Add(file.Split('\\').Last());
+    vars.configFiles[file.Split('\\').Last()] = file;
   }
   // Config files next to active splits file
   files = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config");
   foreach (var file in files) {
-    vars.configFiles.Add(file.Split('\\').Last());
+    vars.configFiles[file.Split('\\').Last()] = file;
   }
   settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
-  foreach (var configFile in vars.configFiles) {
+  foreach (var configFile in vars.configFiles.Keys) {
     settings.Add(configFile, false, null, "configs");
   }
 
@@ -323,9 +319,10 @@ init {
       vars.addPanel(0x34C80, 0);
     } else if (settings["configs"]) {
       string[] lines = {""};
-      foreach (var configFile in vars.configFiles) {
+      foreach (var configFile in vars.configFiles.Keys) {
         if (settings[configFile]) {
-          lines = System.IO.File.ReadAllLines(Directory.GetCurrentDirectory() + "\\" +  configFile);
+          // Full path is saved in the dictionary.
+          lines = System.IO.File.ReadAllLines(vars.configFiles[configFile]);
           vars.log("Selected config file: " + configFile);
           break;
         }
