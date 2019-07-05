@@ -82,6 +82,43 @@ startup {
     "USER: /초월", // Korean
   };
 
+  // Stored in translation_DLC_01_Road_To_Gehenna.txt
+  vars.gehennaVictory = new List<string>{
+    // TermDlg.DLC_18UploadTerminal.Ln0210.0.option.GoodLuckEveryone
+    "USER: Good luck everyone", // English
+    "USER: 各位祝你們好運", // Traditional Chinese
+    "USER: Bonne chance à tous", // French
+    "USER: Viel Glück", // German
+    "USER: Suerte a todos.", // Spanish
+    "USER: Всем удачи", // Russian
+    "USER: Buona fortuna a tutti", // Italian
+    "USER: Powodzenia wszystkim", // Polish
+    "USER: Hodně štěstí všem", // Czech
+    "USER: İyi şanslar millet", // Turkish
+    // TermDlg.DLC_18UploadTerminal.Ln0211.0.option.RememberMe
+    "USER: Remember me", // English
+    "USER: 不要忘了我", // Traditional Chinese
+    "USER: Ne m'oubliez pas", // French
+    "USER: Denkt an mich", // German
+    "USER: Recuérdame.", // Spanish
+    "USER: Помните меня", // Russian
+    "USER: Ricordatemi", // Italian
+    "USER: Pamiętajcie o mnie", // Polish
+    "USER: Pamatujte si na mě", // Czech
+    "USER: Beni unutmayın", // Turkish
+    // TermDlg.DLC_18UploadTerminal.Ln0212.0.option.ForgiveMe
+    "USER: Forgive me", // English
+    "USER: 原諒我", // Traditional Chinese
+    "USER: Pardonnez-moi", // French
+    "USER: Vergebt mir", // German
+    "USER: Perdóname.", // Spanish
+    "USER: Простите меня", // Russian
+    "USER: Perdonatemi", // Italian
+    "USER: Wybaczcie mi", // Polish
+    "USER: Odpusťte mi", // Czech
+    "USER: Beni affedin", // Turkish
+  };
+
   vars.startRegex = new System.Text.RegularExpressions.Regex("^Started simulation on '(.*?)'");
   // Level name, hasIntroCutscene
   vars.knownStartingWorlds = new Dictionary<string, bool> {
@@ -120,21 +157,15 @@ startup {
 init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
-
-  string logPath;
-  if (game.Is64Bit()) {
-    logPath = gameDir.TrimEnd("\\Bin\\x64".ToCharArray());
-  } else {
-    logPath = gameDir.TrimEnd("\\Bin".ToCharArray());
-  }
-  logPath += "\\Log\\" + game.ProcessName + ".log";
-  vars.log("Using log path: '" + logPath + "'");
+  var index = gameDir.IndexOf("The Talos Principle");
+  var logPath = gameDir.Substring(0, index + 19) + "/Log/" + game.ProcessName + ".log";
+  vars.log("Computed log path: '" + logPath + "'");
 
   // To find the loading pointer:
-  // (x64) AOB scan for C7 81 8C010000 01000000 48 8B
+  // (x64) AOB scan for 48 85 C9 74 1E 48 8B 01 FF 50 60
   // (x86) AOB scan for C7 86 74010000 01000000 85 C9
   // Start a new game.
-  // Set a breakpoint
+  // Set a breakpoint on the line with mov [***], 00000001
   // Add Address for ESI (x86) or RCX (x64)
   // Pointer scan for that address
   // Sort by Offset 4
@@ -145,6 +176,11 @@ init {
   vars.cheatFlags = null;
   vars.isLoading = null;
   switch (page.ModuleMemorySize) {
+    case 41943040 :
+      version = "440323 x64";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E1CB88));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1DFD450, 0x10, 0x1F8));
+      break;
     case 41930752:
       version = "429074 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E19B38));
@@ -301,9 +337,7 @@ start {
 
     vars.currentWorld = world;
     vars.lastSigil = "";
-    vars.lastLines = 0;
     vars.graySigils = 0;
-    vars.adminEnding = false;
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -420,11 +454,7 @@ split {
     if (puzzle.StartsWith("AlternativeEding")) {
       return settings["Split on the Nexus gray Floor 6 door"];
     }
-    if (puzzle.StartsWith("DLC_01_Secret")) {
-      return settings["(Custom/DLC) Split when solving any arranger"];
-    }
-    if (puzzle.StartsWith("DLC_01_Hub")) {
-      vars.adminEnding = true; // Admin puzzle door solved, so the Admin is saved.
+    if (puzzle.StartsWith("DLC_01_Secret") || puzzle.StartsWith("DLC_01_Hub")) {
       return settings["(Custom/DLC) Split when solving any arranger"];
     }
     // If it's not one of the main game/DLC strings, then it must be a custom campaign
@@ -458,18 +488,9 @@ split {
     }
   }
   if (vars.currentWorld.EndsWith("DLC_01_Hub.wld")) {
-    if (vars.line == "Save Talos Progress: entered terminal") {
-      vars.lastLines = 0;
-    }
-    if (vars.line.StartsWith("USER:")) {
-      vars.lastLines++;
-      if (vars.adminEnding) {
-        // If admin is saved, it takes 5 lines to end the game
-        return (vars.lastLines == 5);
-      } else {
-        // In all other endings, game ends on the 4th dialogue
-        return (vars.lastLines == 4);
-      }
+    if (vars.gehennaVictory.Contains(vars.line)) {
+      vars.log("Gehenna game completed.");
+      return true;
     }
   }
 }
