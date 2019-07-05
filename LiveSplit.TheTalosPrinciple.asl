@@ -379,8 +379,9 @@ split {
       return true;
     }
   }
-  if (vars.line.StartsWith("Picked:")) { // Sigil/Robot and star collection
-    var sigil = vars.line.Substring(8);
+  // Sigil/Robot and star collection
+  if (vars.line.StartsWith("Backup and Save Talos Progress: tetromino")) {
+    var sigil = vars.line.Substring(43);
     if (sigil == vars.lastSigil) {
       return false; // DLC Double-split prevention
     } else {
