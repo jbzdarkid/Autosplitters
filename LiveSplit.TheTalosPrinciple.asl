@@ -379,14 +379,18 @@ split {
       return true;
     }
   }
-  // Sigil/Robot and star collection
+
+  // Sigil, robot, and star collection
+  string sigil = null;
   if (vars.line.StartsWith("Backup and Save Talos Progress: tetromino")) {
-    var sigil = vars.line.Substring(43);
-    if (sigil == vars.lastSigil) {
-      return false; // DLC Double-split prevention
-    } else {
-      vars.lastSigil = sigil;
-    }
+    sigil = vars.line.Substring(43, 4);
+  } else if (vars.line.StartsWith("Tetromino ")) {
+    sigil = vars.line.Substring(10, 4);
+  }
+
+  if (sigil != null && sigil != vars.lastSigil) {
+    vars.lastSigil = sigil;
+
     vars.log("Collected sigil " + sigil + " in world " + vars.currentWorld);
     if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
       vars.log("Not splitting for a collection in A4, per setting.");
