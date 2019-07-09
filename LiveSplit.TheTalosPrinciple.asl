@@ -366,9 +366,10 @@ split {
   if (vars.line.StartsWith("Changing over to")) { // Map changes
     var mapName = vars.line.Substring(17);
     if (mapName == vars.currentWorld) {
+      vars.log("Restarted checkpoint in world " + vars.currentWorld);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
-    vars.log("Changed worlds from "+vars.currentWorld+" to "+mapName);
+    vars.log("Changed worlds from " + vars.currentWorld + " to " + mapName);
     vars.currentWorld = mapName;
     if (settings["Split on return to Nexus or DLC Hub"] &&
       (mapName.EndsWith("Nexus.wld") ||
@@ -388,10 +389,15 @@ split {
     sigil = vars.line.Substring(10, 4);
   }
 
+  if (sigil != null) {
+    vars.log("NinjaBug 7/8/2019: " + vars.line + " " + vars.sigil);
+    vars.log("\t" + vars.lastSigil);
+  }
+
   if (sigil != null && sigil != vars.lastSigil) {
     vars.lastSigil = sigil;
-
     vars.log("Collected sigil " + sigil + " in world " + vars.currentWorld);
+
     if (settings["worldsplits-A4"] && vars.currentWorld.EndsWith("Cloud_1_04.wld")) {
       vars.log("Not splitting for a collection in A4, per setting.");
       return false;
