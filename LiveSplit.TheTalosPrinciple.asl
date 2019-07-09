@@ -390,7 +390,7 @@ split {
   }
 
   if (sigil != null) {
-    vars.log("NinjaBug 7/8/2019: " + vars.line + " " + vars.sigil);
+    vars.log("NinjaBug 7/8/2019: " + vars.line + " " + sigil);
     vars.log("\t" + vars.lastSigil);
   }
 
