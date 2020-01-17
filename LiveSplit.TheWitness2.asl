@@ -20,7 +20,7 @@ startup {
     0x09F99, // Desert Laser Redirect
     0x34D97, // Boat map
     0x079E0, // Town Triple Panel
-    0x09D9C, // Monastery Bonzai
+    0x09D9C, // Monastery Bonsai
     0x0A07A, // Bunker Elevator
     0x09F80, // Mountaintop Box
     0x17C35, // Mountaintop Crazyhorse
@@ -57,6 +57,7 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
+  settings.Add("feature_stop_tracking", false, "Feature: Don't stop tracking a panel if another is started");
 
   vars.configFiles = new Dictionary<string, string>();
   // Config files next to Livesplit.exe
@@ -520,7 +521,8 @@ start {
 }
 
 split {
-  if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
+  if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0 &&
+    (settings["feature_stop_tracking"] && vars.activePanel == 0)) {
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
     vars.log("Started panel 0x"+panel.ToString("X"));
