@@ -2,6 +2,15 @@ state("witness64_d3d11") {}
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
 
 startup {
+  // Relative to Livesplit.exe
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
+  vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
+    // AppendAllText will create the file if it doesn't exist.
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+
   settings.Add("Split on all panels (solving and non-solving)", false);
   // Panels which are solved multiple times in a normal run
   vars.multiPanels = new List<int>{
@@ -59,29 +68,25 @@ startup {
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("feature_stop_tracking", false, "Feature: Don't stop tracking a panel if another is started");
 
-  vars.configFiles = new Dictionary<string, string>();
-  // Config files next to Livesplit.exe
-  string[] files = System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config");
-  foreach (var file in files) {
-    vars.configFiles[file.Split('\\').Last()] = file;
-  }
-  // Config files next to active splits file
-  files = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config");
-  foreach (var file in files) {
-    vars.configFiles[file.Split('\\').Last()] = file;
-  }
-  settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
-  foreach (var configFile in vars.configFiles.Keys) {
-    settings.Add(configFile, false, null, "configs");
-  }
+  // Config files may live next to Livesplit.exe or next to the splits file.
+  // Ideally, they should end with .witness_config, but they may end with .witness_conf (discord likes to truncate file extensions)
+  var files = new List<string>();
+  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config"));
+  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_conf"));
+  files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config"));
+  files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_conf"));
 
-  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_witness.log";
-  vars.log = (Action<string>)((string logLine) => {
-    print(logLine);
-    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss.fff");
-    // AppendAllText will create the file if it doesn't exist.
-    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
-  });
+  vars.configFiles = new Dictionary<string, string>();
+  settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
+  foreach (var file in files) {
+    string fileName = file.Split('\\').Last();
+    if (vars.configFiles.ContainsKey(fileName)) {
+      vars.log("Found two config files with the same name: " + file + " and " + vars.configFiles[fileName]);
+      continue; // Discard the second one. Hopefully the user can figure this out.
+    }
+    vars.configFiles[fileName] = file;
+    settings.Add(fileName, false, null, "configs");
+  }
   vars.log("Autosplitter loaded");
 }
 
@@ -373,6 +378,7 @@ init {
           vars.configWatchers.Add(watcher);
           vars.log("Watching " + watcher.Name);
         }
+        vars.log("Watching " + vars.panels.Count + " panels");
         vars.configWatchers.UpdateAll(game);
       }
     }
@@ -522,7 +528,7 @@ start {
 
 split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0 &&
-    (settings["feature_stop_tracking"] && vars.activePanel == 0)) {
+    (!settings["feature_stop_tracking"] || vars.activePanel == 0)) {
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
     vars.log("Started panel 0x"+panel.ToString("X"));
