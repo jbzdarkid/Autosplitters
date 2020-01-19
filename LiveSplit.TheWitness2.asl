@@ -1,5 +1,7 @@
 state("witness64_d3d11") {}
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
+// Multipanel busted. https://www.twitch.tv/videos/419028576?t=01h08m40s
+// TODO: Tutorial Patio EP vs Tutorial Flowers EP
 
 startup {
   // Relative to Livesplit.exe
@@ -64,7 +66,6 @@ startup {
   settings.Add("Split on eclipse environmental start", false);
 
   settings.Add("Split on easter egg ending", true);
-  settings.Add("Enable random doors practice", false);
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("feature_stop_tracking", false, "Feature: Don't stop tracking a panel if another is started");
 
@@ -94,7 +95,6 @@ init {
   vars.panels = null; // Used to detect if init completes properly
   vars.startTime = 0.0;
   vars.activePanel = 0;
-  vars.randomDoorsState = settings["Enable random doors practice"];
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
@@ -398,67 +398,6 @@ init {
     }
   });
   vars.initPuzzles();
-
-  vars.randomDoorsInjection = (Func<bool>)(() => {
-    bool enable = settings["Enable random doors practice"];
-    // Entity_Door::close
-    ptr = scanner.Scan(new SigScanTarget(11, // Targeting byte 11
-      "84 C0",               // test al, al
-      "74 11",               // je 11
-      "0F 2F BF ?? ?? 00 00" // comiss xmm7, [rdi + offset]
-      // "76 08" -> "77 08"  // jbe 08 -> ja 08
-    ));
-    if (ptr == IntPtr.Zero) {
-      return false;
-    }
-    // This replaces the logic of
-    if (!enable) {
-      // If a puzzle is NOT solved, turn it off
-      game.WriteBytes(ptr, new byte[] {0x76});
-    } else { // with
-      // If a puzzle IS solved, turn it off
-      game.WriteBytes(ptr, new byte[] {0x77});
-    }
-
-    // Entity_Door::open
-    ptr = scanner.Scan(new SigScanTarget(11, // Targeting byte 11
-      "84 C0",               // test al, al
-      "74 19",               // je 19
-      "0F 2F B7 ?? ?? 00 00" // comiss xmm6, [rdi + offset]
-      // "76 10" -> "EB 08"  // jbe 10 -> jmp 08
-    ));
-    if (ptr == IntPtr.Zero) {
-      return false;
-    }
-    // This replaces the logic of
-    if (!enable) {
-      // If a puzzle is NOT solved, clear it. Always turn the puzzle on.
-      // Note: This differs slightly from the original logic but is equivalent and slightly safer.
-      game.WriteBytes(ptr, new byte[] {0x76, 0x08});
-    } else { // with
-      // Always turn the puzzle on
-      game.WriteBytes(ptr, new byte[] {0xEB, 0x08});
-    }
-
-    IntPtr leftDoor = (new DeepPointer(basePointer, 0x18, 0x1983*8)).Deref<IntPtr>(game);
-    IntPtr rightDoor = (new DeepPointer(basePointer, 0x18, 0x1987*8)).Deref<IntPtr>(game);
-
-    // Adjust from "solved_t_target" to "id_to_power" is 0x20
-    int idToPower = game.ReadValue<int>(ptr-4) + 0x20;
-    // This replaces the logic of
-    if (!enable) {
-      // Power the double doors
-      game.WriteBytes(leftDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
-      game.WriteBytes(rightDoor + idToPower, new byte[] {0x68, 0x7C, 0x01, 0x00});
-    } else { // with
-      // Power nothing
-      game.WriteBytes(leftDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
-      game.WriteBytes(rightDoor + idToPower, new byte[] {0x00, 0x00, 0x00, 0x00});
-    }
-    // Only update the variable if the injection succeeded. We'll try again next frame.
-    vars.randomDoorsState = enable;
-    return true;
-  });
 }
 
 update {
@@ -479,10 +418,6 @@ update {
   vars.obeliskWatchers.UpdateAll(game);
   vars.configWatchers.UpdateAll(game);
 
-  if (settings["Enable random doors practice"] != vars.randomDoorsState) {
-    vars.log(vars.randomDoorsState + " " + settings["Enable random doors practice"]);
-    vars.randomDoorsInjection();
-  }
   if (vars.updateText) {
     vars.tcs.Text1 = "Failed Panels:";
     vars.tcs.Text2 = vars.deathCount.ToString();
@@ -510,7 +445,6 @@ reset {
 
 start {
   if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
-    vars.randomDoorsInjection();
     if (vars.startTime == 0.0) {
       vars.startTime = vars.time.Current;
       vars.initPuzzles();
