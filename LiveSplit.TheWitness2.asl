@@ -463,6 +463,7 @@ start {
 split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0 &&
     (!settings["feature_stop_tracking"] || vars.activePanel == 0)) {
+    if (vars.activePanel != 0) vars.log(vars.activePanel + " " + settings["feature_stop_tracking"] + " hopefully this is false");
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
     vars.log("Started panel 0x"+panel.ToString("X"));
