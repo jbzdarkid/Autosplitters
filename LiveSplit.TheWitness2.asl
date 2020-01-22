@@ -461,14 +461,22 @@ start {
 }
 
 split {
-  if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0 &&
-    (!settings["feature_stop_tracking"] || vars.activePanel == 0)) {
-    if (vars.activePanel != 0) vars.log(vars.activePanel + " " + settings["feature_stop_tracking"] + " hopefully this is false");
+  var newPanel = false;
+  if (settings["feature_stop_tracking"]) {
+    if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0 && vars.activePanel == 0) {
+      newPanel = true;
+    }
+  } else {
+    if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
+      newPanel = true;
+    }
+  }
+  if (newPanel) {
     int panel = vars.puzzle.Current;
     vars.activePanel = panel;
-    vars.log("Started panel 0x"+panel.ToString("X"));
+    vars.log("Started panel 0x"+(panel-1).ToString("X") + " " + vars.activePanel);
     if (!vars.panels.ContainsKey(panel)) {
-      vars.log("Encountered new panel 0x"+panel.ToString("X"));
+      vars.log("Encountered new panel 0x"+(panel-1).ToString("X"));
       if (settings["Split on all panels (solving and non-solving)"]) {
         vars.addPanel(panel, 1);
       } else {
