@@ -491,6 +491,7 @@ split {
   if (vars.activePanel != 0) {
     int panel = vars.activePanel;
     if (!vars.panels.ContainsKey(panel) || vars.panels[panel] == null) {
+      vars.log("Active panel was somehow set to an invalid panel");
       vars.activePanel = 0;
       return false;
     }
