@@ -96,7 +96,7 @@ startup {
 
 init {
   vars.panels = null; // Used to detect if init completes properly
-  vars.startTimeIsZero = true;
+  vars.gameIsRunning = false;
   vars.activePanel = 0;
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
@@ -362,9 +362,7 @@ update {
   vars.puzzle.Update(game);
   vars.gameFrames.Update(game);
   // This is handled in update rather than reset to account for manual resets
-  if (vars.gameFrames.Current == 0) {
-    vars.startTimeIsZero = true;
-  }
+  if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
@@ -390,15 +388,15 @@ reset {
 
 start {
   if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
-    if (vars.startTimeIsZero) {
-      vars.startTimeIsZero = false;
+    if (!vars.gameIsRunning) {
+      vars.gameIsRunning = true;
       vars.initPuzzles();
       return true;
     }
   }
   if (settings["Start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-      vars.startTimeIsZero = false;
+      vars.gameIsRunning = true;
       vars.initPuzzles();
       return true;
     }
@@ -408,7 +406,7 @@ start {
 split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
     int panel = vars.puzzle.Current;
-    if (vars.allPanels.Contains(panel)) { // Only set activePanel if it's actually a panel.
+    if (vars.allPanels.Contains(panel-1)) { // Only set activePanel if it's actually a panel.
       vars.activePanel = panel;
       vars.log("Started panel 0x"+(panel-1).ToString("X"));
       if (!vars.panels.ContainsKey(panel)) {
