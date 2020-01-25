@@ -290,9 +290,7 @@ init {
 
   vars.panels = new Dictionary<int, Tuple<int, int, DeepPointer>>();
   vars.obeliskWatchers = new MemoryWatcherList();
-  vars.keepWatchers = new MemoryWatcherList();
-  vars.multiWatchers = new MemoryWatcherList();
-  vars.configWatchers = new MemoryWatcherList();
+  vars.watchers = new MemoryWatcherList();
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
@@ -302,22 +300,25 @@ init {
 
   vars.initPuzzles = (Action)(() => {
     vars.epCount = 0;
+    vars.obeliskWatchers.UpdateAll(game);
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
-    vars.log("Loaded with EP count: "+vars.epCount);
+    vars.log("Loaded with EP count: " + vars.epCount);
     vars.panels.Clear();
-    vars.keepWatchers = new MemoryWatcherList();
-    vars.multiWatchers = new MemoryWatcherList();
-    vars.configWatchers = new MemoryWatcherList();
+    vars.watchers = new MemoryWatcherList();
     if (settings["Split on all panels (solving and non-solving)"]) {
       foreach (var panel in vars.keepWalkOns) {
-        vars.keepWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset)));
+        // A little bit of a hack -- keep purple is essentially a multipanel, so we need to use the solved offset.
+        var watcher = new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset));
+        watcher.Name = "Keep walk-on 0x" + panel.ToString("X");
+        vars.watchers.Add(watcher);
       }
-      vars.keepWatchers.UpdateAll(game);
       foreach (var panel in vars.multipanel) {
-        vars.addPanel(panel, 0);
-        vars.multiWatchers.Add(new MemoryWatcher<int>(createPointer(panel, vars.completedOffset)));
+        vars.addPanel(panel+1, 0);
+        var watcher = new MemoryWatcher<int>(createPointer(panel, vars.completedOffset));
+        watcher.Name = "Multipanel 0x" + panel.ToString("X");
+        vars.watchers.Add(watcher);
       }
-      vars.multiWatchers.UpdateAll(game);
+      vars.watchers.UpdateAll(game);
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
       foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999);
       // Boat speed panel should never split, it's too inconsistent
@@ -374,11 +375,11 @@ init {
             continue;
           }
           watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
-          vars.configWatchers.Add(watcher);
+          vars.watchers.Add(watcher);
           vars.log("Watching " + watcher.Name);
         }
         vars.log("Watching " + vars.panels.Count + " panels");
-        vars.configWatchers.UpdateAll(game);
+        vars.watchers.UpdateAll(game);
       }
     }
 
@@ -412,10 +413,8 @@ update {
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
-  vars.keepWatchers.UpdateAll(game);
-  vars.multiWatchers.UpdateAll(game);
   vars.obeliskWatchers.UpdateAll(game);
-  vars.configWatchers.UpdateAll(game);
+  vars.watchers.UpdateAll(game);
 
   if (vars.updateText) {
     vars.tcs.Text1 = "Failed Panels:";
@@ -519,33 +518,14 @@ split {
     }
   }
 
-  foreach (var configWatch in vars.configWatchers) {
+  foreach (var watcher in vars.watchers) {
     // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
-    if (configWatch.Old == 0 && configWatch.Current > 0) {
-      vars.log("Splitting for config setting: " + configWatch.Name);
+    if (watcher.Old == 0 && watcher.Current > 0) {
+      vars.log("Splitting for config setting: " + watcher.Name);
       return true;
     }
   }
 
-  if (settings["Split on all panels (solving and non-solving)"]) {
-    // Keep panels don't trigger nicely since they never become the active panel
-    for (int i=0; i<vars.keepWatchers.Count; i++) {
-      var panel = vars.keepWatchers[i];
-      if (panel.Old == 0 && panel.Current == 1) {
-        string color = new List<string>{"Yellow", "Purple", "Green", "Blue"}[i];
-        vars.log(color + " keep panel has been solved");
-        return true;
-      }
-    }
-    // Avoid duplication for multipanel
-    for (int i=0; i<vars.multiWatchers.Count; i++) {
-      var panel = vars.multiWatchers[i];
-      if (panel.Old == 0 && panel.Current == 1) {
-        vars.log("Completed multipanel " + i);
-        return true;
-      }
-    }
-  }
   if (settings["Split on environmental patterns"]) {
     int epCount = 0;
     foreach (var watcher in vars.obeliskWatchers) epCount += watcher.Current;
@@ -555,6 +535,7 @@ split {
       return true;
     }
   }
+
   if (settings["Split on easter egg ending"]) {
     if (vars.eyelidStart.Old == -1 && vars.eyelidStart.Current > 0) {
       return true;
