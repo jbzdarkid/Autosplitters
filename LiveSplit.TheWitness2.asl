@@ -184,6 +184,20 @@ init {
     + " | EP offset: "+vars.epOffset.ToString("X")
   );
 
+  // get_panel_color_cycle_factors()
+  ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
+    "83 FA 02",           // cmp edx, 02
+    "7F 3B",              // jg get_panel_color_cycle_factors + A9
+    "F2 0F10 05 ????????" // movsd xmm0, [Core::time_info+10]
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find time!");
+  }
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.time = new MemoryWatcher<double>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr)
+  ));
+
   // update_scripted_stuff()
   ptr = scanner.Scan(new SigScanTarget(2, // Targeting byte 2
     "FF 05 ????????", // inc [num_script_frames]
@@ -359,8 +373,12 @@ init {
 update {
   if (vars.panels == null) return false; // Init not yet done
 
-  vars.puzzle.Update(game);
+  // Don't run if the game is loading. This is necessary to handle reloads
+  vars.time.Update(game);
+  if (vars.time.Current <= vars.time.Old) return false;
+
   vars.gameFrames.Update(game);
+  vars.puzzle.Update(game);
   // This is handled in update rather than reset to account for manual resets
   if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
   vars.playerMoving.Update(game);
