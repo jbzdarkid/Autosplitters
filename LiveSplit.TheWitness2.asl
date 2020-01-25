@@ -420,7 +420,7 @@ split {
     }
   }
 
-  if (vars.activePanel != 0) {
+  if (vars.activePanel != 0 && vars.panels.ContainsKey(vars.activePanel)) {
     int panel = vars.activePanel;
     var puzzleData = vars.panels[panel];
     int state = puzzleData.Item3.Deref<int>(game);
@@ -447,7 +447,7 @@ split {
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
-    } else {
+    } else if (state != 0) {
       vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
       if (state == 2 || state == 3) vars.deathCount++;
