@@ -246,16 +246,14 @@ init {
   };
 
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
-    if (!vars.panels.ContainsKey(panel)) {
-      if (!vars.allPanels.Contains(panel-1)) {
-        vars.log("Attempted to add panel 0x" + (panel-1).ToString("X") + " which is not in the panel list! This is likely due to an incorrect ID in your configuration file.");
-      } else {
-        vars.panels[panel] = new Tuple<int, int, DeepPointer>(
-          0,         // Number of times solved
-          maxSolves, // Number of times to split
-          createPointer(panel-1, vars.solvedOffset)
-        );
-      }
+    if (!vars.allPanels.Contains(panel-1)) {
+      vars.log("Attempted to add panel 0x" + (panel-1).ToString("X") + " which is not in the panel list! This is likely due to an incorrect ID in your configuration file.");
+    } else if (!vars.panels.ContainsKey(panel)) { // This check is a little bit paranoid.
+      vars.panels[panel] = new Tuple<int, int, DeepPointer>(
+        0,         // Number of times solved
+        maxSolves, // Number of times to split
+        createPointer(panel-1, vars.solvedOffset)
+      );
     }
   });
 
@@ -380,7 +378,7 @@ update {
   if (vars.time.Current <= vars.time.Old) return false;
   vars.puzzle.Update(game);
   vars.gameFrames.Update(game);
-  // Separated out to handle manual resets
+  // This is handled in update rather than reset to account for manual resets
   if (vars.gameFrames.Current == 0) vars.startTime = 0.0;
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
@@ -433,28 +431,22 @@ start {
 split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
     int panel = vars.puzzle.Current;
-    vars.activePanel = panel;
-    vars.log("Started panel 0x"+(panel-1).ToString("X") + " " + vars.activePanel);
-    if (!vars.panels.ContainsKey(panel)) {
-      vars.log("Encountered new panel 0x"+(panel-1).ToString("X"));
-      if (settings["Split on all panels (solving and non-solving)"]) {
-        vars.addPanel(panel, 1);
-      } else {
-        vars.addPanel(panel, 0);
-      }
-      if (panel == 0x339B9 && settings["Split on eclipse environmental start"]) {
-        vars.log("Splitting for eclipse start");
-        return true;
+    if (vars.allPanels.Contains(panel)) { // Only set activePanel if it's actually a panel.
+      vars.activePanel = panel;
+      vars.log("Started panel 0x"+(panel-1).ToString("X"));
+      if (!vars.panels.ContainsKey(panel)) {
+        vars.log("Encountered new panel 0x"+(panel-1).ToString("X"));
+        if (settings["Split on all panels (solving and non-solving)"]) {
+          vars.addPanel(panel, 1);
+        } else {
+          vars.addPanel(panel, 0);
+        }
       }
     }
   }
+
   if (vars.activePanel != 0) {
     int panel = vars.activePanel;
-    if (!vars.panels.ContainsKey(panel) || vars.panels[panel] == null) {
-      vars.log("Active panel was somehow set to an invalid panel");
-      vars.activePanel = 0;
-      return false;
-    }
     var puzzleData = vars.panels[panel];
     int state = puzzleData.Item3.Deref<int>(game);
     // Valid states:
@@ -480,20 +472,17 @@ split {
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
-    } else if (state == 2 || state == 3) {
+    } else {
       vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
       vars.activePanel = 0;
-      vars.deathCount++;
-    } else if (state != 0) { // This should not happen, there are no other known states.
-      vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
-      vars.activePanel = 0;
+      if (state == 2 || state == 3) vars.deathCount++;
     }
   }
 
   foreach (var watcher in vars.watchers) {
     // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
     if (watcher.Old == 0 && watcher.Current > 0) {
-      vars.log("Splitting for config setting: " + watcher.Name);
+      vars.log("Splitting for watcher: " + watcher.Name);
       return true;
     }
   }
@@ -504,6 +493,13 @@ split {
     if (epCount > vars.epCount) {
       vars.log("Solved EP #" + epCount);
       vars.epCount = epCount;
+      return true;
+    }
+  }
+
+  if (settings["Split on eclipse environmental start"]) {
+    if (vars.puzzle.Old == 0 && vars.puzzle.Current == 0x339B9) {
+      vars.log("Splitting for eclipse start");
       return true;
     }
   }
