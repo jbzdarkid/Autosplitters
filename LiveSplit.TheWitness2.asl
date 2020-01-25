@@ -96,7 +96,7 @@ startup {
 
 init {
   vars.panels = null; // Used to detect if init completes properly
-  vars.startTime = 0.0;
+  vars.startTimeIsZero = true;
   vars.activePanel = 0;
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
@@ -183,20 +183,6 @@ init {
     + " | Record Power offset: "+recordPowerOffset.ToString("X")
     + " | EP offset: "+vars.epOffset.ToString("X")
   );
-
-  // get_panel_color_cycle_factors()
-  ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
-    "83 FA 02",           // cmp edx, 02
-    "7F 3B",              // jg get_panel_color_cycle_factors + A9
-    "F2 0F10 05 ????????" // movsd xmm0, [Core::time_info+10]
-  ));
-  if (ptr == IntPtr.Zero) {
-    throw new Exception("Could not find time!");
-  }
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-  vars.time = new MemoryWatcher<double>(new DeepPointer(
-    relativePosition + game.ReadValue<int>(ptr)
-  ));
 
   // update_scripted_stuff()
   ptr = scanner.Scan(new SigScanTarget(2, // Targeting byte 2
@@ -373,13 +359,12 @@ init {
 update {
   if (vars.panels == null) return false; // Init not yet done
 
-  // Don't run if the game is loading / paused
-  vars.time.Update(game);
-  if (vars.time.Current <= vars.time.Old) return false;
   vars.puzzle.Update(game);
   vars.gameFrames.Update(game);
   // This is handled in update rather than reset to account for manual resets
-  if (vars.gameFrames.Current == 0) vars.startTime = 0.0;
+  if (vars.gameFrames.Current == 0) {
+    vars.startTimeIsZero = true;
+  }
   vars.playerMoving.Update(game);
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
@@ -390,14 +375,6 @@ update {
     vars.tcs.Text1 = "Failed Panels:";
     vars.tcs.Text2 = vars.deathCount.ToString();
   }
-}
-
-isLoading {
-  return true; // Disable gameTime approximation
-}
-
-gameTime {
-  return TimeSpan.FromSeconds(vars.time.Current - vars.startTime);
 }
 
 reset {
@@ -413,15 +390,15 @@ reset {
 
 start {
   if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
-    if (vars.startTime == 0.0) {
-      vars.startTime = vars.time.Current;
+    if (vars.startTimeIsZero) {
+      vars.startTimeIsZero = false;
       vars.initPuzzles();
       return true;
     }
   }
   if (settings["Start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
-      vars.startTime = vars.time.Current;
+      vars.startTimeIsZero = false;
       vars.initPuzzles();
       return true;
     }
