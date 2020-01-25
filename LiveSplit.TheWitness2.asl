@@ -118,21 +118,7 @@ init {
     game.ReadValue<int>(ptr+22)
   ));
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 50;
-  int basePointer = relativePosition + game.ReadValue<int>(ptr+46);
-  vars.log("witness64_d3d11.globals = "+basePointer.ToString("X"));
-
-  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
-    return new DeepPointer(basePointer, 0x18, id*8, offset);
-  };
-  // First panel in the game
-  int panelType = createPointer(0x64, 0x8).Deref<int>(game);
-  if (panelType == 0) {
-    // Sleeping lags livesplit, but so does repeatedly throwing exceptions,
-    // and this doesn't also lag the game.
-    Thread.Sleep(1000);
-    throw new Exception("Couldn't find panel type!");
-  }
-  vars.log("Panel type: 0x"+panelType.ToString("X"));
+  int globals = relativePosition + game.ReadValue<int>(ptr+46);
 
   // judge_panel()
   ptr = scanner.Scan(new SigScanTarget(0,
@@ -177,20 +163,8 @@ init {
   }
   int recordPowerOffset = game.ReadValue<int>(ptr);
   vars.challengeActive = new MemoryWatcher<float>(new DeepPointer(
-    basePointer, 0x18, 0xBFF*8, recordPowerOffset
+    globals, 0x18, 0xBFF*8, recordPowerOffset
   ));
-
-  // Entity_Door::update()
-  ptr = scanner.Scan(new SigScanTarget(4,
-    "F3 0F10 8B ????????", // movss xmm1, [rbx + target1]
-    "F3 0F10 83 ????????", // movss xmm1, [rbx + target2]
-    "48 89 BC 24 ????????" // mov [rsp+??], rdi
-  ));
-  if (ptr == IntPtr.Zero) {
-    throw new Exception("Could not find door offsets!");
-  }
-  vars.doorCurrent = game.ReadValue<int>(ptr);
-  vars.doorTarget = game.ReadValue<int>(ptr+8);
 
   // Entity_Obelisk_Report::light_up
   ptr = scanner.Scan(new SigScanTarget(3,
@@ -201,12 +175,11 @@ init {
   vars.epOffset = game.ReadValue<int>(ptr);
 
   vars.log(
-    "Solved offset: "+vars.solvedOffset.ToString("X")
+    "Globals: "+globals.ToString("X")
+    + " | Solved offset: "+vars.solvedOffset.ToString("X")
     + " | Completed offset: "+vars.completedOffset.ToString("X")
     + " | Obelisk offset: "+obeliskOffset.ToString("X")
     + " | Door offset: "+vars.doorOffset.ToString("X")
-    + " | Door current: "+vars.doorCurrent.ToString("X")
-    + " | Door target: "+vars.doorTarget.ToString("X")
     + " | Record Power offset: "+recordPowerOffset.ToString("X")
     + " | EP offset: "+vars.epOffset.ToString("X")
   );
@@ -268,11 +241,9 @@ init {
     relativePosition + game.ReadValue<int>(ptr)
   ));
 
-  // Entity_Audio_Recording::play_or_stop()
-  // 83 BB ???????? 00 48 8B CB 74 0A
-
-  // do_focus_mode_left_mouse_press()
-  // 8B 05 ???????? 85 C0 74 5B
+  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
+    return new DeepPointer(globals, 0x18, id*8, offset);
+  };
 
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
     if (!vars.panels.ContainsKey(panel)) {
@@ -303,8 +274,9 @@ init {
     vars.obeliskWatchers.UpdateAll(game);
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
     vars.log("Loaded with EP count: " + vars.epCount);
+
     vars.panels.Clear();
-    vars.watchers = new MemoryWatcherList();
+    vars.watchers.Clear();
     if (settings["Split on all panels (solving and non-solving)"]) {
       foreach (var panel in vars.keepWalkOns) {
         // A little bit of a hack -- keep purple is essentially a multipanel, so we need to use the solved offset.
