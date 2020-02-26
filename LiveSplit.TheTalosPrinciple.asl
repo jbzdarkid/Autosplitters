@@ -39,6 +39,10 @@ startup {
   settings.Add("worldsplits-B6", false, "B6");
   settings.Add("worldsplits-B8", false, "B8");
 
+  settings.CurrentDefaultParent = null;
+  settings.Add("bug1", false, "Additional logging for Evandar / Ghow bug, where IGT is not working");
+  settings.Add("bug2", false, "Additional logging for Ninja bug, where splits were completely missed");
+
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
     print(logLine);
@@ -176,10 +180,27 @@ init {
   vars.cheatFlags = null;
   vars.isLoading = null;
   switch (page.ModuleMemorySize) {
-    case 41943040 :
+    case 0:
+      version = "462259 x64"; // Windows Store
+      break;
+    case 1:
+      version = "461288 x64"; // Epic Games Store
+      break;
+    case 41943040:
+      if (settings["bug1"]) {
+        vars.log("------ Evandar / Ghow bug: Splits are working but IGT is not");
+        vars.log("Version 440323 x64");
+        var tmp = new DeepPointer(0x1E00470);
+        vars.log(". " + tmp.Deref<int>(game));
+        tmp = new DeepPointer(0x1E00470, 0x10);
+        vars.log(".. " + tmp.Deref<int>(game));
+        tmp = new DeepPointer(0x1E00470, 0x10, 0x1F8);
+        vars.log("... " + tmp.Deref<int>(game));
+      }
+
       version = "440323 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E1CB88));
-      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1DFD450, 0x10, 0x1F8));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1E00470, 0x10, 0x1F8));
       break;
     case 41930752:
       version = "429074 x64";
@@ -196,7 +217,7 @@ init {
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1673BC0));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x16488F0, 0x10, 0x208));
       break;
-    case 24354816 :
+    case 24354816:
       version = "252786 x64";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1507868));
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x14FF960, 0x10, 0x208));
@@ -354,6 +375,17 @@ isLoading {
   if (vars.introCutscene && vars.line == "Save Talos Progress: delayed request") {
     vars.log("Intro cutscene was skipped or ended normally, starting timer.");
     vars.introCutscene = false;
+    if (settings["bug1"]) {
+      vars.log("------ Evandar / Ghow bug: Splits are working but IGT is not");
+      vars.log("Version 440323 x64");
+      vars.log(" " + vars.isLoading + " " + vars.isLoading.Current);
+      var tmp = new DeepPointer(0x1E00470);
+      vars.log("* " + tmp.Deref<int>(game));
+      tmp = new DeepPointer(0x1E00470, 0x10);
+      vars.log("** " + tmp.Deref<int>(game));
+      tmp = new DeepPointer(0x1E00470, 0x10, 0x1F8);
+      vars.log("*** " + tmp.Deref<int>(game));
+    }
   }
   // Pause the timer during the intro cutscene
   if (vars.introCutscene) return true;
@@ -364,6 +396,18 @@ isLoading {
 
 split {
   if (vars.line.StartsWith("Changing over to")) { // Map changes
+    if (settings["bug1"]) {
+      vars.log("------ Evandar / Ghow bug: Splits are working but IGT is not");
+      vars.log("Version 440323 x64");
+      vars.log(" " + vars.isLoading + " " + vars.isLoading.Current);
+      var tmp = new DeepPointer(0x1E00470);
+      vars.log("* " + tmp.Deref<int>(game));
+      tmp = new DeepPointer(0x1E00470, 0x10);
+      vars.log("** " + tmp.Deref<int>(game));
+      tmp = new DeepPointer(0x1E00470, 0x10, 0x1F8);
+      vars.log("*** " + tmp.Deref<int>(game));
+    }
+
     var mapName = vars.line.Substring(17);
     if (mapName == vars.currentWorld) {
       vars.log("Restarted checkpoint in world " + vars.currentWorld);
@@ -389,9 +433,11 @@ split {
     sigil = vars.line.Substring(10, 4);
   }
 
-  if (sigil != null) {
-    vars.log("NinjaBug 7/8/2019: " + vars.line + " " + sigil);
-    vars.log("\t" + vars.lastSigil);
+  if (settings["bug2"]) {
+    if (sigil != null) {
+      vars.log("NinjaBug 7/8/2019: " + vars.line + " " + sigil);
+      vars.log("\t" + vars.lastSigil);
+    }
   }
 
   if (sigil != null && sigil != vars.lastSigil) {
