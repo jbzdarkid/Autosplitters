@@ -160,30 +160,53 @@ startup {
 init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
-  var index = gameDir.IndexOf("The Talos Principle");
-  var logPath = gameDir.Substring(0, index + 19) + "/Log/" + game.ProcessName + ".log";
+
+  string logPath = "";
+  if (gameDir.Contains("The Talos Principle")) {
+    // Steam log file
+    var index = gameDir.IndexOf("The Talos Principle");
+    logPath = gameDir.Substring(0, index + 19) + "/Log/" + game.ProcessName + ".log";
+  } else if (gameDir.Contains("TheTalosPrinciple")) {
+    // Epic Games log file
+    var index = gameDir.IndexOf("TheTalosPrinciple");
+    logPath = gameDir.Substring(0, index + 17) + "/Log/" + game.ProcessName + ".log";
+  } else {
+    // Xbox (Microsoft) log file does not exist
+    vars.log("No log file found, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
+  }
   vars.log("Computed log path: '" + logPath + "'");
 
+  // To find the cheats pointer:
+  // Open console (F1), and set cht_bEnableCheats = 1234
+  // Search for a 4 byte with value 1234
+  // Set cheats to 2345
+  // Search for a 4 byte with value 2345
+  // Add the green address, then look at its value. It should say Talos.exe+AAAAAAAA
+  // You resulting pointer is (AAAAAAAA)
+
   // To find the loading pointer:
-  // (x64) AOB scan for 48 85 C9 74 1E 48 8B 01 FF 50 60
-  // (x86) AOB scan for C7 86 74010000 01000000 85 C9
-  // Start a new game.
-  // Set a breakpoint on the line with mov [***], 00000001
-  // Add Address for ESI (x86) or RCX (x64)
+  // (x64) AOB scan for 48 83 B9 ?? ?? 00 00 00 41 8B F9
+  // You should see cmp qword ptr [rcx + 0000AAAA], 00
+  // (x86) AOB scan for 8B F1 83 BE ?? ?? 00 00 00 74 32 80 3D
+  // You should see cmp dword ptr [esi + 0000AAAA], 00
+  // Make a note of AAAA
+  // (x64) AOB scan for 48 83 EC ?? 48 8B 49 10 48 85 C9 74 17
+  // (x86) AOB scan for 8B 49 08 83 EC 08
+  // Set a breakpoint on the scan line: mov ecx, [ecx + BB]
+  // Add address for ECX/RCX
   // Pointer scan for that address
-  // Sort by Offset 4
-  // Find the Talos.exe+??? which has offsets 8, 0 (x86) or 10, 0 (x64)
-  // That ??? is the base value for the loading pointer. Other offsets are unchanged.
+  // Sort by offset 2
+  // Find the Talos.exe+CCCCCCCC which has a single offset of 0
+  // Your resulting pointer is (CCCCCCCC, BB, AAAA)
   // Moddable base values have always been exactly 0x3000 less so far, best to check again just in case though
 
   vars.cheatFlags = null;
   vars.isLoading = null;
   switch (page.ModuleMemorySize) {
-    case 0:
-      version = "462259 x64"; // Windows Store
-      break;
-    case 1:
-      version = "461288 x64"; // Epic Games Store
+    case 42323968:
+      version = "461288 x64"; // Xbox & Epic Games Store
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E76DB8));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1E5A690, 0x10, 0x1F8));
       break;
     case 41943040:
       version = "440323 x64";
@@ -290,18 +313,23 @@ init {
       break;
 
     default:
-      version = "Unknown";
-      vars.log("ModuleMemorySize = " + modules.First().ModuleMemorySize);
+      version = "Unknown " + modules.First().ModuleMemorySize;
       break;
   }
   vars.log("Using game version: " + version);
 
-  try { // Wipe the log file to clear out messages from last time
-    FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
-    fs.SetLength(0);
-    fs.Close();
-  } catch {} // May fail if file doesn't exist.
-  vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+  if (logPath != "") {
+    try { // Wipe the log file to clear out messages from last time
+      FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+      fs.SetLength(0);
+      fs.Close();
+    } catch {} // May fail if file doesn't exist.
+    vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+  } else {
+    // Set defaults for the rest of the script. The split block will not run, but the isLoading block will.
+    vars.reader = null;
+    vars.line = null;
+  }
 }
 
 exit {
@@ -310,16 +338,17 @@ exit {
 }
 
 update {
-  while (true) {
+  while (vars.reader != null) {
     vars.line = vars.reader.ReadLine();
     if (vars.line == null || vars.line.Length < 16) return false; // If no line was read, don't run any other blocks.
     if (vars.line.Substring(9, 3) == "ERR") continue; // Filter out error-level logging, as it can be spammy when bots get stuck
     break;
   }
-  vars.line = vars.line.Substring(16); // Removes the date and log level from the line
+  // Removes the date and log level from the line
+  if (vars.line != null) vars.line = vars.line.Substring(16);
 
-  if (vars.cheatFlags != null) {vars.cheatFlags.Update(game);}
-  if (vars.isLoading != null) {vars.isLoading.Update(game);}
+  if (vars.cheatFlags != null) vars.cheatFlags.Update(game);
+  if (vars.isLoading != null) vars.isLoading.Update(game);
 }
 
 start {
@@ -372,8 +401,9 @@ isLoading {
 }
 
 split {
-  if (vars.line.StartsWith("Changing over to")) { // Map changes
+  if (vars.line == null) return false;
 
+  if (vars.line.StartsWith("Changing over to")) { // Map changes
     var mapName = vars.line.Substring(17);
     if (mapName == vars.currentWorld) {
       vars.log("Restarted checkpoint in world " + vars.currentWorld);
