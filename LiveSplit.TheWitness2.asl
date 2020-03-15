@@ -2,7 +2,6 @@ state("witness64_d3d11") {}
 // TODO: Handle challenge start the same as theater input, and get rid of the sigscan
 // Multipanel busted. https://www.twitch.tv/videos/419028576?t=01h08m40s
 // TODO: Tutorial Patio EP vs Tutorial Flowers EP
-// @Cleanup: Full panel list is great -- prepopulate the dictionary and overwrite it with config. That way, there's no need to reference it later -- it will always have all panels as keys.
 
 startup {
   // Relative to Livesplit.exe
@@ -17,33 +16,33 @@ startup {
   settings.Add("Split on all panels (solving and non-solving)", false);
   // Panels which are solved multiple times in a normal run
   vars.multiPanels = new List<int>{
-    0x03679, 0x0367A, 0x03676, 0x03677, // Mill control panels
-    0x03853, 0x03859, 0x275FB, // Boathouse control panels
-    0x0060A, 0x17C0B, 0x17E08, 0x17E2C, 0x181F6, 0x18489, // Swamp Control Panels
-    0x17CE4, 0x17DB8, 0x17DD2, 0x17E53, // Treehouse R1, R2, L, Green Rotators
-    0x2896B, // Town Bridge Control
-    0x334D9, // Town RGB light control
+    0x03678, 0x03679, 0x03675, 0x03676, // Mill control panels
+    0x03852, 0x03858, 0x275FA, // Boathouse control panels
+    0x00609, 0x17C0A, 0x17E07, 0x17E2B, 0x181F5, 0x18488, // Swamp Control Panels
+    0x17CE3, 0x17DB7, 0x17DD1, 0x17E52, // Treehouse R1, R2, L, Green Rotators
+    0x2896A, // Town Bridge Control
+    0x334D8, // Town RGB light control
 
-    0x09E3A, 0x09ED9, 0x09E87, // Purple, Blue, Orange Mountain Walkways
-    0x00816, // Cinema input panel
-    0x03554, 0x03553, 0x0354F, 0x0354A, 0x03550, 0x03546, // Cinema Panels
-    0x0A3B6, // Tutorial Back Left
-    0x0362A, // Tutorial Gate
-    0x09F99, // Desert Laser Redirect
-    0x34D97, // Boat map
-    0x079E0, // Town Triple Panel
-    0x09D9C, // Monastery Bonsai
-    0x0A07A, // Bunker Elevator
-    0x09F80, // Mountaintop Box
-    0x17C35, // Mountaintop Crazyhorse
-    0x09FCD, // Mountain Multi
-    0x09EEC, // Mountain Elevator
+    0x09E39, 0x09ED8, 0x09E86, // Purple, Blue, Orange Mountain Walkways
+    0x00815, // Cinema input panel
+    0x03553, 0x03552, 0x0354E, 0x03549, 0x0354F, 0x03545, // Cinema Panels
+    0x0A3B5, // Tutorial Back Left
+    0x03629, // Tutorial Gate
+    0x09F98, // Desert Laser Redirect
+    0x34D96, // Boat map
+    0x079DF, // Town Triple Panel
+    0x09D9B, // Monastery Bonsai
+    0x0A079, // Bunker Elevator
+    0x09F7F, // Mountaintop Box
+    0x17C34, // Mountaintop Crazyhorse
+    0x09FCC, // Mountain Multi
+    0x09EEB, // Mountain Elevator
   };
   vars.keepWalkOns = new List<int>{
-    0x033EA, // Yellow
-    0x01BE9, // Purple
-    0x01CD3, // Green
-    0x01D3F, // Blue
+    0x033E9, // Yellow
+    0x01BE8, // Purple
+    0x01CD2, // Green
+    0x01D3E, // Blue
   };
   vars.multipanel = new List<int>{
     0x09FCC, 0x09FCE, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2
@@ -174,14 +173,15 @@ init {
   ));
   vars.epOffset = game.ReadValue<int>(ptr);
 
-  vars.log(
-    "Globals: "+globals.ToString("X")
-    + " | Solved offset: "+vars.solvedOffset.ToString("X")
-    + " | Completed offset: "+vars.completedOffset.ToString("X")
-    + " | Obelisk offset: "+obeliskOffset.ToString("X")
-    + " | Door offset: "+vars.doorOffset.ToString("X")
-    + " | Record Power offset: "+recordPowerOffset.ToString("X")
-    + " | EP offset: "+vars.epOffset.ToString("X")
+  vars.log("-------------------"
+    + "\nGlobals: "+globals.ToString("X")
+    + "\nSolved offset: "+vars.solvedOffset.ToString("X")
+    + "\nCompleted offset: "+vars.completedOffset.ToString("X")
+    + "\nObelisk offset: "+obeliskOffset.ToString("X")
+    + "\nDoor offset: "+vars.doorOffset.ToString("X")
+    + "\nRecord Power offset: "+recordPowerOffset.ToString("X")
+    + "\nEP offset: "+vars.epOffset.ToString("X")
+    + "\n==================="
   );
 
   // get_panel_color_cycle_factors()
@@ -225,6 +225,10 @@ init {
   vars.playerMoving = new MemoryWatcher<int>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr)
   ));
+  relativePosition -= 0x13;
+  vars.interactMode = new MemoryWatcher<int>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr - 0x10)
+  ));
 
   // end2_eyelid_trigger()
   ptr = scanner.Scan(new SigScanTarget(8, // Targeting byte 8
@@ -246,13 +250,13 @@ init {
   };
 
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
-    if (!vars.allPanels.Contains(panel-1)) {
-      vars.log("Attempted to add panel 0x" + (panel-1).ToString("X") + " which is not in the panel list! This is likely due to an incorrect ID in your configuration file.");
+    if (!vars.allPanels.Contains(panel)) {
+      vars.log("Attempted to add panel 0x" + panel.ToString("X") + " which is not in the panel list! This is likely due to an incorrect ID in your configuration file.");
     } else if (!vars.panels.ContainsKey(panel)) { // This check is a little bit paranoid.
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         0,         // Number of times solved
         maxSolves, // Number of times to split
-        createPointer(panel-1, vars.solvedOffset)
+        createPointer(panel, vars.solvedOffset)
       );
     }
   });
@@ -283,7 +287,7 @@ init {
         vars.watchers.Add(watcher);
       }
       foreach (var panel in vars.multipanel) {
-        vars.addPanel(panel+1, 0);
+        vars.addPanel(panel, 0);
         var watcher = new MemoryWatcher<int>(createPointer(panel, vars.completedOffset));
         watcher.Name = "Multipanel 0x" + panel.ToString("X");
         vars.watchers.Add(watcher);
@@ -292,7 +296,7 @@ init {
       // Multi-panels use the solved offset, since they need to be solved every time you exit them
       foreach (var panel in vars.multiPanels) vars.addPanel(panel, 9999);
       // Boat speed panel should never split, it's too inconsistent
-      vars.addPanel(0x34C80, 0);
+      vars.addPanel(0x34C7F, 0);
     } else if (settings["configs"]) {
       string[] lines = {""};
       foreach (var configFile in vars.configFiles.Keys) {
@@ -326,14 +330,14 @@ init {
             if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
               watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
             } else {
-              vars.addPanel(id + 1, 1);
+              vars.addPanel(id, 1);
               continue;
             }
           } else if (mode == "multipanels") {
             if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
               watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
             } else {
-              vars.addPanel(id + 1, 9999);
+              vars.addPanel(id, 9999);
               continue;
             }
           } else if (mode == "eps") {
@@ -382,6 +386,7 @@ update {
   // This is handled in update rather than reset to account for manual resets
   if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
   vars.playerMoving.Update(game);
+  vars.interactMode.Update(game);
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
   vars.obeliskWatchers.UpdateAll(game);
@@ -412,6 +417,14 @@ start {
       return true;
     }
   }
+  // Mode 0 == solve, Mode 1 == panel, Mode 2 == walk, Mode 3 == flythrough
+  if (vars.interactMode.Old == 2 && vars.interactMode.Current != 2) {
+    if (!vars.gameIsRunning) {
+      vars.gameIsRunning = true;
+      vars.initPuzzles();
+      return true;
+    }
+  }
   if (settings["Start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.gameIsRunning = true;
@@ -423,12 +436,12 @@ start {
 
 split {
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
-    int panel = vars.puzzle.Current;
-    if (vars.allPanels.Contains(panel-1)) { // Only set activePanel if it's actually a panel.
+    int panel = vars.puzzle.Current - 1;
+    if (vars.allPanels.Contains(panel)) { // Only set activePanel if it's actually a panel.
       vars.activePanel = panel;
-      vars.log("Started panel 0x"+(panel-1).ToString("X"));
+      vars.log("Started panel 0x"+panel.ToString("X"));
       if (!vars.panels.ContainsKey(panel)) {
-        vars.log("Encountered new panel 0x"+(panel-1).ToString("X"));
+        vars.log("Encountered new panel 0x"+panel.ToString("X"));
         if (settings["Split on all panels (solving and non-solving)"]) {
           vars.addPanel(panel, 1);
         } else {
