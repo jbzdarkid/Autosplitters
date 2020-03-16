@@ -96,7 +96,7 @@ startup {
 init {
   vars.panels = null; // Used to detect if init completes properly
   vars.gameIsRunning = false;
-  vars.activePanel = 0;
+  vars.activePanel = -1;
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
@@ -451,7 +451,7 @@ split {
     }
   }
 
-  if (vars.activePanel != 0 && vars.panels.ContainsKey(vars.activePanel)) {
+  if (vars.activePanel != -1 && vars.panels.ContainsKey(vars.activePanel)) {
     int panel = vars.activePanel;
     var puzzleData = vars.panels[panel];
     int state = puzzleData.Item3.Deref<int>(game);
@@ -464,9 +464,9 @@ split {
     // 5: Floor Meta Subpanel error
     if (state == 1 || state == 4 ||
       // Cinema input panel exits in state 3 on the first solve
-      (vars.activePanel == 0x00816 && state == 3 && puzzleData.Item1 == 0) ||
+      (vars.activePanel == 0x00815 && state == 3 && puzzleData.Item1 == 0) ||
       // Challenge start exits in state 3 sometimes
-      (vars.activePanel == 0x0A333 && state == 3)
+      (vars.activePanel == 0x0A332 && state == 3)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Current solve count
@@ -474,13 +474,13 @@ split {
         puzzleData.Item3      // State pointer
       );
       vars.log("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
-      vars.activePanel = 0;
+      vars.activePanel = -1;
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
     } else if (state != 0) {
       vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
-      vars.activePanel = 0;
+      vars.activePanel = -1;
       if (state == 2 || state == 3) vars.deathCount++;
     }
   }
