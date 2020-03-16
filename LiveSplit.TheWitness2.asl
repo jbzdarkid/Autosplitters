@@ -39,10 +39,10 @@ startup {
     0x09EEB, // Mountain Elevator
   };
   vars.keepWalkOns = new List<int>{
-    0x033E9, // Yellow
-    0x01BE8, // Purple
-    0x01CD2, // Green
-    0x01D3E, // Blue
+    0x033EA, // Yellow
+    0x01BE9, // Purple
+    0x01CD3, // Green
+    0x01D3F, // Blue
   };
   vars.multipanel = new List<int>{
     0x09FCC, 0x09FCE, 0x09FCF, 0x09FD0, 0x09FD1, 0x09FD2
@@ -55,12 +55,12 @@ startup {
   settings.Add("Split on environmental patterns", false);
   // Tracked via obelisks, which report their counts
   vars.obelisks = new List<int> {
-    0x00098, // Treehouse
-    0x00264, // Monastery
-    0x0035A, // Desert
-    0x00368, // Mountain
-    0x0A16D, // Town
-    0x22074, // Shadows
+    0x00097, // Treehouse
+    0x00263, // Monastery
+    0x00359, // Desert
+    0x00367, // Mountain
+    0x0A16C, // Town
+    0x22073, // Shadows
   };
 
   // Other misc settings
@@ -267,7 +267,7 @@ init {
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
-      vars.obeliskWatchers.Add(new MemoryWatcher<int>(createPointer(obelisk-1, obeliskOffset)));
+      vars.obeliskWatchers.Add(new MemoryWatcher<int>(createPointer(obelisk, obeliskOffset)));
     }
   }
 
