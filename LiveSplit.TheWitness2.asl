@@ -64,7 +64,7 @@ startup {
   };
 
   // Other misc settings
-  settings.Add("Start on challenge start", false);
+  settings.Add("Only start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
   settings.Add("Split on eclipse environmental start", false);
 
@@ -410,26 +410,28 @@ reset {
 }
 
 start {
-  if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
-    if (!vars.gameIsRunning) {
-      vars.gameIsRunning = true;
-      vars.initPuzzles();
-      return true;
-    }
-  }
-  // Mode 0 == solve, Mode 1 == panel, Mode 2 == walk, Mode 3 == flythrough
-  if (vars.interactMode.Old == 2 && vars.interactMode.Current != 2) {
-    if (!vars.gameIsRunning) {
-      vars.gameIsRunning = true;
-      vars.initPuzzles();
-      return true;
-    }
-  }
-  if (settings["Start on challenge start"]) {
+  if (settings["Only start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.gameIsRunning = true;
       vars.initPuzzles();
       return true;
+    }
+  } else {
+    // If "Only start on challenge start" is active, don't start for any other reason
+    if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
+      if (!vars.gameIsRunning) {
+        vars.gameIsRunning = true;
+        vars.initPuzzles();
+        return true;
+      }
+    }
+    // Mode 0 == solve, Mode 1 == panel, Mode 2 == walk, Mode 3 == flythrough
+    if (vars.interactMode.Old == 2 && vars.interactMode.Current != 2) {
+      if (!vars.gameIsRunning) {
+        vars.gameIsRunning = true;
+        vars.initPuzzles();
+        return true;
+      }
     }
   }
 }
