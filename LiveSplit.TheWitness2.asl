@@ -1,7 +1,6 @@
 state("witness64_d3d11") {}
-// TODO: Handle challenge start the same as theater input, and get rid of the sigscan
-// Multipanel busted. https://www.twitch.tv/videos/419028576?t=01h08m40s
 // TODO: Tutorial Patio EP vs Tutorial Flowers EP
+// TODO: If panel is solved beyond a certain distance, split regardless of correctness.
 
 startup {
   // Relative to Livesplit.exe
