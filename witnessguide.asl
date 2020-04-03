@@ -5,9 +5,6 @@ state("witness64_d3d11") {}
 // Windmill deactivate -> Find door
 // Use actual picture numbers rather than internal count
 // Keep Purple reset adds ep_half in the wrong order
-// Some way to reset (restarting game?)
-
-// Desert vault picture is bad
 
 startup {
   settings.Add("Loaded", true);
