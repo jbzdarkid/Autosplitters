@@ -63,6 +63,8 @@ startup {
     0x22073, // Shadows
   };
 
+  settings.Add("Split on audio logs", false);
+
   // Other misc settings
   settings.Add("Only start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
@@ -70,14 +72,21 @@ startup {
 
   settings.Add("Split on easter egg ending", true);
   settings.Add("Override first text component with a Failed Panels count", false);
+  settings.Add("Override first text component with a Completed Audio Logs count", false);
 
   // Config files may live next to Livesplit.exe or next to the splits file.
-  // Ideally, they should end with .witness_config, but they may end with .witness_conf (discord likes to truncate file extensions)
+  // Ideally, they should end with .witness_config, but they may end with .witness_conf (discord likes to truncate file extensions) or .txt (if people don't have "show file extensions" checked)
   var files = new List<string>();
+  // Relative to LiveSplit.exe
   files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config"));
+  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config.txt"));
   files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_conf"));
-  files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config"));
-  files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_conf"));
+  // Relative to splits file
+  if (timer.Run.FilePath != null) {
+    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config"));
+    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config.txt"));
+    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_conf"));
+  }
 
   vars.configFiles = new Dictionary<string, string>();
   settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
@@ -173,17 +182,6 @@ init {
   ));
   vars.epOffset = game.ReadValue<int>(ptr);
 
-  vars.log("-------------------"
-    + "\nGlobals: "+globals.ToString("X")
-    + "\nSolved offset: "+vars.solvedOffset.ToString("X")
-    + "\nCompleted offset: "+vars.completedOffset.ToString("X")
-    + "\nObelisk offset: "+obeliskOffset.ToString("X")
-    + "\nDoor offset: "+vars.doorOffset.ToString("X")
-    + "\nRecord Power offset: "+recordPowerOffset.ToString("X")
-    + "\nEP offset: "+vars.epOffset.ToString("X")
-    + "\n==================="
-  );
-
   // get_panel_color_cycle_factors()
   ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
     "83 FA 02",           // cmp edx, 02
@@ -245,9 +243,47 @@ init {
     relativePosition + game.ReadValue<int>(ptr)
   ));
 
-  Func<int, int, DeepPointer> createPointer = (int id, int offset) => {
+  // do_focus_mode_left_mouse_press()
+  ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
+    "48 83 C4 20",   // add rsp, 20
+    "5B",            // pop rbx
+    "E9 ????????",   // jmp exit_focus_mode
+    "8B 05 ????????" // mov eax, [id_to_use]
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find audio log!");
+  }
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.audioLog = new MemoryWatcher<int>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr)
+  ));
+
+  // Entity_Audio_Recording::set_render_parameters()
+  ptr = scanner.Scan(new SigScanTarget(7, // Targeting byte 7
+    "E9 AF010000",   // jmp +0x1AF
+    "8B 83 ????0000" // mov eax, [rbx + offset]
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find audio log playing!");
+  }
+  vars.audioLogOffset = game.ReadValue<int>(ptr);
+  vars.completedAudioLogs = new HashSet<int>();
+
+  vars.log("-------------------"
+    + "\nGlobals: " + globals.ToString("X")
+    + "\nSolved offset: " + vars.solvedOffset.ToString("X")
+    + "\nCompleted offset: " + vars.completedOffset.ToString("X")
+    + "\nObelisk offset: " + obeliskOffset.ToString("X")
+    + "\nDoor offset: " + vars.doorOffset.ToString("X")
+    + "\nRecord Power offset: " + recordPowerOffset.ToString("X")
+    + "\nEP offset: " + vars.epOffset.ToString("X")
+    + "\nAudio log playing offset: " + vars.audioLogOffset.ToString("X")
+    + "\n==================="
+  );
+
+  vars.createPointer = (Func<int, int, DeepPointer>)((int id, int offset) => {
     return new DeepPointer(globals, 0x18, id*8, offset);
-  };
+  });
 
   vars.addPanel = (Action<int, int>)((int panel, int maxSolves) => {
     if (!vars.allPanels.Contains(panel)) {
@@ -256,7 +292,7 @@ init {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         0,         // Number of times solved
         maxSolves, // Number of times to split
-        createPointer(panel, vars.solvedOffset)
+        vars.createPointer(panel, vars.solvedOffset)
       );
     }
   });
@@ -267,11 +303,15 @@ init {
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
-      vars.obeliskWatchers.Add(new MemoryWatcher<int>(createPointer(obelisk, obeliskOffset)));
+      vars.obeliskWatchers.Add(new MemoryWatcher<int>(vars.createPointer(obelisk, obeliskOffset)));
     }
   }
 
   vars.initPuzzles = (Action)(() => {
+    vars.activeAudioLog = 0;
+    vars.hoveringOverAudioLog = null;
+    vars.activelyPlayingAudioLog = null;
+    vars.completedAudioLogs.Clear();
     vars.epCount = 0;
     vars.obeliskWatchers.UpdateAll(game);
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
@@ -282,13 +322,13 @@ init {
     if (settings["Split on all panels (solving and non-solving)"]) {
       foreach (var panel in vars.keepWalkOns) {
         // A little bit of a hack -- keep purple is essentially a multipanel, so we need to use the solved offset.
-        var watcher = new MemoryWatcher<int>(createPointer(panel, vars.solvedOffset));
+        var watcher = new MemoryWatcher<int>(vars.createPointer(panel, vars.solvedOffset));
         watcher.Name = "Keep walk-on 0x" + panel.ToString("X");
         vars.watchers.Add(watcher);
       }
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0);
-        var watcher = new MemoryWatcher<int>(createPointer(panel, vars.completedOffset));
+        var watcher = new MemoryWatcher<int>(vars.createPointer(panel, vars.completedOffset));
         watcher.Name = "Multipanel 0x" + panel.ToString("X");
         vars.watchers.Add(watcher);
       }
@@ -328,22 +368,22 @@ init {
           MemoryWatcher watcher = null;
           if (mode == "panels") {
             if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
-              watcher = new MemoryWatcher<int>(createPointer(id, vars.completedOffset));
+              watcher = new MemoryWatcher<int>(vars.createPointer(id, vars.completedOffset));
             } else {
               vars.addPanel(id, 1);
               continue;
             }
           } else if (mode == "multipanels") {
             if (vars.keepWalkOns.Contains(id) || vars.multipanel.Contains(id)) {
-              watcher = new MemoryWatcher<int>(createPointer(id, vars.solvedOffset));
+              watcher = new MemoryWatcher<int>(vars.createPointer(id, vars.solvedOffset));
             } else {
               vars.addPanel(id, 9999);
               continue;
             }
           } else if (mode == "eps") {
-            watcher = new MemoryWatcher<int>(createPointer(id, vars.epOffset));
+            watcher = new MemoryWatcher<int>(vars.createPointer(id, vars.epOffset));
           } else if (mode == "doors") {
-            watcher = new MemoryWatcher<float>(createPointer(id, vars.doorOffset));
+            watcher = new MemoryWatcher<float>(vars.createPointer(id, vars.doorOffset));
           } else {
             vars.log("Encountered unknown mode: " + mode);
             continue;
@@ -359,7 +399,8 @@ init {
 
     vars.deathCount = 0;
     vars.updateText = false;
-    if (settings["Override first text component with a Failed Panels count"]) {
+    if (settings["Override first text component with a Failed Panels count"]
+     || settings["Override first text component with a Completed Audio Logs count"]) {
       foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
         if (component.GetType().Name == "TextComponent") {
           vars.tc = component;
@@ -393,8 +434,14 @@ update {
   vars.watchers.UpdateAll(game);
 
   if (vars.updateText) {
-    vars.tcs.Text1 = "Failed Panels:";
-    vars.tcs.Text2 = vars.deathCount.ToString();
+    if (settings["Override first text component with a Failed Panels count"]) {
+      vars.tcs.Text1 = "Failed Panels:";
+      vars.tcs.Text2 = vars.deathCount.ToString();
+    }
+    if (settings["Override first text component with a Completed Audio Logs count"]) {
+      vars.tcs.Text1 = "Audio Logs:";
+      vars.tcs.Text2 = vars.completedAudioLogs.Count.ToString();
+    }
   }
 }
 
@@ -492,6 +539,43 @@ split {
     if (watcher.Old == 0 && watcher.Current > 0) {
       vars.log("Splitting for watcher: " + watcher.Name);
       return true;
+    }
+  }
+
+  if (settings["Split on audio logs"]
+   || settings["Override first text component with a Completed Audio Logs count"]) {
+    vars.audioLog.Update(game);
+    if (vars.audioLog.Old == 0 && vars.audioLog.Current != 0) {
+      var audioLog = vars.audioLog.Current - 1;
+      vars.log("Started hovering over audio log: 0x" + audioLog.ToString("X"));
+      vars.hoveringOverAudioLog = new MemoryWatcher<int>(vars.createPointer(audioLog, vars.audioLogOffset));
+    } else if (vars.audioLog.Old != 0 && vars.audioLog.Current == 0) {
+      var audioLog = vars.audioLog.Old - 1;
+      vars.log("Stopped hovering over audio log: 0x" + audioLog.ToString("X"));
+      vars.hoveringOverAudioLog = null;
+    }
+
+    if (vars.hoveringOverAudioLog != null) {
+      vars.hoveringOverAudioLog.Update(game);
+      if (vars.hoveringOverAudioLog.Old == 0 && vars.hoveringOverAudioLog.Current == 1) {
+        vars.activeAudioLog = vars.audioLog.Current - 1;
+        vars.log("Started playing audio log: 0x" + vars.activeAudioLog.ToString("X"));
+        vars.activelyPlayingAudioLog = vars.hoveringOverAudioLog;
+        vars.hoveringOverAudioLog = null;
+        return settings["Split on audio logs"];
+      }
+    }
+
+    if (vars.activelyPlayingAudioLog != null) {
+      vars.activelyPlayingAudioLog.Update(game);
+      if (vars.activelyPlayingAudioLog.Old == 1 && vars.activelyPlayingAudioLog.Current == 0) {
+        vars.log("Audio log 0x" + vars.activeAudioLog.ToString("X") + " stopped playing");
+        vars.activelyPlayingAudioLog = null;
+
+        int played = vars.createPointer(vars.activeAudioLog, vars.audioLogOffset + 4).Deref<int>(game);
+        vars.log("Audio log finished playing: " + played); // Note: This is true when solving EEE, for some reason.
+        if (played == 1) vars.completedAudioLogs.Add(vars.activeAudioLog);
+      }
     }
   }
 
