@@ -7,6 +7,8 @@ state("witness64_d3d11") {}
 // Keep Purple reset adds ep_half in the wrong order
 // Some way to reset (restarting game?)
 
+// Desert vault picture is bad
+
 startup {
   settings.Add("Loaded", true);
   vars.keepWalkOns = new List<int>{
@@ -149,6 +151,9 @@ init {
   vars.playerY = new MemoryWatcher<float>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr) + 4
   ));
+  vars.playerZ = new MemoryWatcher<float>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr) + 8
+  ));
 
   // get_panel_color_cycle_factors()
   ptr = scanner.Scan(new SigScanTarget(9, // Targeting byte 9
@@ -163,6 +168,22 @@ init {
   vars.time = new MemoryWatcher<double>(new DeepPointer(
     relativePosition + game.ReadValue<int>(ptr)
   ));
+
+  // do_focus_mode_left_mouse_press()
+  ptr = scanner.Scan(new SigScanTarget(12, // Targeting byte 12
+    "48 83 C4 20",   // add rsp, 20
+    "5B",            // pop rbx
+    "E9 ????????",   // jmp exit_focus_mode
+    "8B 05 ????????" // mov eax, [id_to_use]
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find audio log!");
+  }
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.audioLog = new MemoryWatcher<int>(new DeepPointer(
+    relativePosition + game.ReadValue<int>(ptr)
+  ));
+  vars.audioLogs = new HashSet<int>();
 
   Func<int, int, DeepPointer> createPointer = (int puzzle, int offset) => {
     return new DeepPointer(basePointer, 0x18, (puzzle-1)*8, offset);
@@ -324,6 +345,71 @@ init {
     {0x33A2B, "Doorway"},
     {0x33B07, "Church"},
   };
+  Dictionary<int, string> audioLogNames = new Dictionary<int, string>{
+    {0x0050A, "Tutorial Gate"},
+    {0x0074F, "Keep Front Wall"},
+    {0x00761, "Swamp Shortcut"},
+    {0x00763, "Mountain 1 Blue Panels"},
+    {0x00A0F, "Mountaintop "},
+    {0x011F9, "Mountain 1 Junk Column"},
+    {0x012C7, "Keep Throne"},
+    {0x015B7, "Town Obelisk"},
+    {0x015C0, "Outside Tutorial Stones"},
+    {0x015C1, "Treehouse Green Bridge"},
+    {0x329FE, "Shipwreck Bridge"},
+    {0x329FF, "Mill Stairs"},
+    {0x32A00, "Bunker Green Room"},
+    {0x32A07, "Swamp Purple Underwater"},
+    {0x32A08, "Mountain 2 Blue Path Panel"},
+    {0x32A0A, "Town Lattice Panel Left"},
+    {0x32A0E, "Shadows Orange Crate"},
+    {0x336E5, "Easter Egg Ending Apple"},
+    {0x338A3, "Easter Egg Ending Countertop"},
+    {0x338A4, "Easter Egg Ending Sunbathing"},
+    {0x338A5, "Easter Egg Ending Wine Table"},
+    {0x338A6, "Easter Egg Ending Purple Flowers"},
+    {0x338A7, "Easter Egg Ending Record"},
+    {0x338AD, "Easter Egg Ending Briefcase (iOS)"},
+    {0x338AE, "Easter Egg Ending Briefcase"},
+    {0x338AF, "Easter Egg Ending Briefcase (?)"},
+    {0x338B0, "Easter Egg Ending Briefcase (?)"},
+    {0x338B7, "Easter Egg Ending Briefcase (?)"},
+    {0x338BD, "UTM Town Shortcut"},
+    {0x338C1, "UTM Challenge Water"},
+    {0x338C9, "UTM Mountainside Shortcut"},
+    {0x338CA, "UTM Invisible Dots"},
+    {0x338D7, "UTM Stairwell"},
+    {0x338EF, "Easter Egg Ending Pillow"},
+    {0x339A8, "Tutorial Patio Roof"},
+    {0x339A9, "Outside Tutorial Discard"},
+    {0x33AFF, "Mountain 1 Purple Path Panel"},
+    {0x33B36, "Peninsula "},
+    {0x33B37, "Symmetry Island Fading Lines"},
+    {0x3C0F3, "Town Bell Tower"},
+    {0x3C0F4, "Jungle Entrance Left"},
+    {0x3C0F7, "Boat Treehouse Rock"},
+    {0x3C0FD, "Boat Broken Boat"},
+    {0x3C0FE, "Desert Broken Wall"},
+    {0x3C0FF, "Mountain 3 Peekaboo"},
+    {0x3C100, "Jungle Entrance Right"},
+    {0x3C101, "Mountain 3 Giant Floor"},
+    {0x3C102, "Jungle Laser"},
+    {0x3C103, "Mountainside Cloud Cycle"},
+    {0x3C104, "Treehouse Docks"},
+    {0x3C105, "Tunnels Box"},
+    {0x3C106, "Monastery Left Shutters"},
+    {0x3C107, "Town Laser Redirect"},
+    {0x3C108, "Easter Egg Ending Pool"},
+    {0x3C109, "Symmetry Island Behind Laser"},
+    {0x3C10A, "Town Lattice Panel Right"},
+    {0x3C10B, "Keep Guitar Amp"},
+    {0x3C10C, "Shadows Laser"},
+    {0x3C10D, "Jungle Beach"},
+    {0x3C10E, "Keep Corridor"},
+    {0x3C12A, "Treehouse Shipwreck Shore"},
+    {0x3C135, "UTM Cave In"},
+  };
+
   Dictionary<int, string> panelNames = new Dictionary<int, string>{
     {0x00001, "Red Underwater 1"},
     {0x00002, "Teal Underwater 1"},
@@ -967,11 +1053,13 @@ init {
   vars.onPanelExited = (Func<int, int, bool>)((int panel, int state) => {
     var copyFrom = vars.INPUT_FOLDER + "/0x";
     var copyTo = vars.OUTPUT_FOLDER + "/";
-    string name;
+    string name = "ERROR";
     if (panelNames.ContainsKey(panel-1)) {
       name = panelNames[panel-1];
-    } else {
+    } else if (epNames.ContainsKey(panel)) {
       name = epNames[panel] + " EP";
+    } else if (audioLogNames.ContainsKey(panel-1)) {
+      name = audioLogNames[panel-1] + " Audio Log";
     }
     string suffix = "";
     int length = createPointer(panel, segmentOffset).Deref<int>(game);
@@ -1041,6 +1129,12 @@ init {
       target = createPointer(0x383A, doorTarget).Deref<float>(game);
       if (target == 0) suffix = "_d";
       if (target == 1) suffix = "_u";
+      break;
+    case 0x03678: // Mill Stairs Control
+      if (vars.playerZ.Current < 4.0) {
+        suffix += "_far";
+        name = "Stairs Snipe";
+      }
       break;
     case 0x03800: // Treehouse Drawbridge Control
       if (length == 20) suffix = "_d";
@@ -1255,7 +1349,7 @@ init {
         name += " CW";
       } else if (curr < target) {
         suffix = "_ccw";
-        name += "CCW";
+        name += " CCW";
       }
       if (curr == target) return false;
       target = (target + 1.0) % 1.0;
@@ -1411,7 +1505,7 @@ init {
     copyTo += vars.nextId.ToString().PadLeft(5, '0');
     try {
       File.Copy(copyFrom + ".png", copyTo + ".png", true);
-    } catch (System.IO.FileNotFoundException e) {
+    } catch (System.IO.FileNotFoundException) {
       print("File not found: " + copyFrom);
       File.Create(copyTo + "_0x" + (panel-1).ToString("X").PadLeft(5, '0') + ".png");
     }
@@ -1432,8 +1526,8 @@ update {
   vars.puzzle.Update(game);
   vars.playerX.Update(game);
   vars.playerY.Update(game);
+  vars.audioLog.Update(game);
   vars.keepWatchers.UpdateAll(game);
-
 
   // Started a new panel
   if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
@@ -1462,6 +1556,13 @@ update {
     }
   }
 
+  if (vars.audioLog.Old == 0 && vars.audioLog.Current != 0) {
+    if (!vars.audioLogs.Contains(vars.audioLog.Current)) {
+      vars.onPanelExited(vars.audioLog.Current, 1);
+      vars.audioLogs.Add(vars.audioLog.Current);
+    }
+  }
+
   if (vars.activePanel == 0) return;
   // States:
   // 0: Unsolved
@@ -1484,6 +1585,7 @@ update {
   if (state == 2 && (vars.activePanel == 0x0A07A || vars.activePanel == 0x0C374)) {
     vars.onPanelExited(vars.activePanel, state);
   }
+
   vars.activePanel = 0;
   vars.activePanelPointer = null;
 }
