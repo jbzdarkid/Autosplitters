@@ -191,6 +191,7 @@ init {
   // You should see cmp dword ptr [esi + 0000AAAA], 00
   // Make a note of AAAA
   // (x64) AOB scan for 48 83 EC ?? 48 8B 49 10 48 85 C9 74 17
+  // Set a breakpoint on the scan line: mov rcx, [rcx + BB]
   // (x86) AOB scan for 8B 49 08 83 EC 08
   // Set a breakpoint on the scan line: mov ecx, [ecx + BB]
   // Add address for ECX/RCX
@@ -265,6 +266,11 @@ init {
       vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x11C6B44, 0x8, 0x1C8));
       break;
 
+    case 41926656:
+      version = "440323 x64 Moddable";
+      vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x1E19B88));
+      vars.isLoading = new MemoryWatcher<int>(new DeepPointer(0x1DFD470, 0x10, 0x1F8));
+      break;
     case 35549184:
       version = "326589 x64 Moddable";
       vars.cheatFlags = new MemoryWatcher<int>(new DeepPointer(0x17C0670));
@@ -382,9 +388,10 @@ start {
 }
 
 reset {
-  if (vars.line == "Saving talos progress upon game stop.") {
+  if (vars.line == "Saving talos progress upon game stop."
+   || vars.line == "Saving game progress upon game stop.") {
     vars.log("Stopped run because the game was stopped.");
-    return true; // Unique line printed only when you stop the game
+    return true; // Unique line printed only when you stop the game / stop moddable
   }
 }
 
