@@ -4,7 +4,6 @@ state("witness64_d3d11") {}
 // Bunker floor 2 is masked by 5
 // Windmill deactivate -> Find door
 // Use actual picture numbers rather than internal count
-// Keep Purple reset adds ep_half in the wrong order
 
 startup {
   settings.Add("Loaded", true);
@@ -25,6 +24,7 @@ init {
   vars.multiCount = 0;
   vars.swampIslandCount = 0;
   vars.activePanelPointer = null;
+  vars.lightColor = "_b";
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
@@ -118,6 +118,16 @@ init {
   ));
   int epOffset = game.ReadValue<int>(ptr);
 
+  // Entity_Light::power_on
+  ptr = scanner.Scan(new SigScanTarget(21,
+    "40 53",        // push rbx
+    "48 83 EC 20",  // sub rsp, 20
+    "48 8B D9",     // mov rbx, rcx
+    "E8 ????????",  // call Entity::wake
+    "B2 01"         // mov dl, 01
+  ));
+  int lightOnOffset = game.ReadValue<int>(ptr);
+
   print(
     "Solved offset: "+solvedOffset.ToString("X")
     + "\n Segment offset: "+segmentOffset.ToString("X")
@@ -127,7 +137,8 @@ init {
     + "\n Door Target offset: "+doorTarget.ToString("X")
     + "\n Boat Path Length offset: "+boatLength.ToString("X")
     + "\n Boat Waypoint offset: "+waypointOffset.ToString("X")
-    + "\n EP offset: "+waypointOffset.ToString("X")
+    + "\n EP offset: "+epOffset.ToString("X")
+    + "\n Light On offset: "+lightOnOffset.ToString("X")
   );
 
   // simulate_guy()
@@ -229,7 +240,7 @@ init {
     {0x03336, "SE Underside"},
     {0x03368, "Black Line"},
     {0x033BF, "Yellow Pressure Plate"},
-    {0x033CA, "Purple Pressure Plate"},
+    {0x033C0, "Purple Pressure Plate"},
     {0x033DE, "Green Pressure Plate"},
     {0x033E6, "Blue Right Pressure Plate"},
     {0x03413, "NE Underside"},
@@ -698,7 +709,7 @@ init {
     {0x09DB5, "Erasers and Stars 5"},
     {0x09DB8, "Summon Boat"},
     {0x09DD5, "Challenge Pillar"},
-    {0x09DE0, "Laser"},
+    {0x09DE0, "Bunker Laser"},
     {0x09E39, "Purple Pathway"},
     {0x09E49, "Shadows Shortcut"},
     {0x09E56, "Right Pillar 2"},
@@ -761,7 +772,7 @@ init {
     {0x0A049, "Surface 6"},
     {0x0A053, "Surface 7"},
     {0x0A054, "Summon Boat"},
-    {0x0A079, "Elevator"},
+    {0x0A079, "Bunker Elevator"},
     {0x0A099, "Glass Door"},
     {0x0A0C8, "Orange Crate"},
     {0x0A15C, "Final Left Convex"},
@@ -886,7 +897,7 @@ init {
     {0x17E67, "Ultraviolet 2"},
     {0x17ECA, "Flood 5"},
     {0x17F5F, "Windmill Door"},
-    {0x17F89, "Entrance"},
+    {0x17F89, "Theater Entrance"},
     {0x17F93, "Mountain Discard"},
     {0x17F9B, "Jungle Discard"},
     {0x17FA0, "Laser Discard"},
@@ -1077,12 +1088,28 @@ init {
       }
       break;
     case 0x00816: // Theater Control
-      if (length == 13) panel = 0x03554; // Tutorial
-      if (length == 11) panel = 0x03553; // Desert
-      if (length == 27) panel = 0x0354F; // Jungle
-      if (length == 25) panel = 0x0354A; // Eclipse
-      if (length == 22) panel = 0x03550; // Shipwreck
-      if (length == 18) panel = 0x03546; // Mountain
+      if (length == 13) {
+        panel = 0x03554;
+        name = "Tutorial Video";
+      } else if (length == 11) {
+        panel = 0x03553;
+        name = "Desert Video";
+      } else if (length == 27) {
+        panel = 0x0354F;
+        name = "Jungle Video";
+      } else if (length == 25) {
+        panel = 0x0354A;
+        name = "Challenge Video";
+      } else if (length == 22) {
+        panel = 0x03550;
+        name = "Shipwreck Video";
+      } else if (length == 18) {
+        panel = 0x03546;
+        name = "Mountain Video";
+      }
+      break;
+    case 0x01A55: // Glass Factory Entry
+      if (vars.playerX.Current < -180.0) suffix = "_far";
       break;
     case 0x01BEA: // Keep Purple
       if (length == 19) suffix = "_ep"; // EP solution
@@ -1151,6 +1178,10 @@ init {
       if (target == 0.6) suffix = "_3";
       if (target == 0.8) suffix = "_2";
       if (target == 1.0) suffix = "_1";
+      break;
+    case 0x03C09: // RGB Stars
+    case 0x03C0D: // RGB Stones
+      suffix = vars.lightColor;
       break;
     case 0x079E0: // Town Triple
       if (length == 17) suffix = "_1";
@@ -1244,9 +1275,6 @@ init {
     case 0x0A3B6: // Tutorial Back Left
       if (length == 15) suffix = "_1";
       if (length == 25) suffix = "";
-      break;
-    case 0x0A3BA: // Keep Purple Reset
-      vars.onPanelExited(0x01BEA, 1);
       break;
     case 0x0C374: // Tutorial Flowers
       if (state == 1) suffix = "";
@@ -1383,17 +1411,23 @@ init {
       if (length == 15) {
         suffix = "_g";
         name += " Green";
+        vars.lightColor = "_g";
       } else if (length == 11) {
         suffix = "_r";
         name += " Red";
+        vars.lightColor = "_r";
       }
       break;
     case 0x335AC: // UTM In-Elevator Control
     case 0x335AD: // UTM Upper Elevator Control
     case 0x3369E: // UTM Lower Elevator Control
-      target = createPointer(0x38ACC, doorTarget).Deref<float>(game);
-      if (target == 0) suffix = "_u";
-      if (target == 1) suffix = "_d";
+      if (vars.playerZ > 0.0) {
+        suffix = "_far";
+      } else {
+        target = createPointer(0x38ACC, doorTarget).Deref<float>(game);
+        if (target == 0) suffix = "_u";
+        if (target == 1) suffix = "_d";
+      }
       break;
     case 0x34D97: // Boat Map
       Thread.Sleep(2000); // Wait 2s for the boat to stop
@@ -1498,6 +1532,8 @@ init {
       System.IO.File.WriteAllText(copyTo + "_splits.lss", splitsStart + splits + splitsEnd);
     }
 
+    print((panel-1).ToString("X").PadLeft(5, '0') + suffix + " " + name);
+
     copyFrom += (panel-1).ToString("X").PadLeft(5, '0') + suffix;
     copyTo += vars.nextId.ToString().PadLeft(5, '0');
     try {
@@ -1508,6 +1544,8 @@ init {
     }
     vars.nextId++;
 
+    // Keep Purple Reset -> Add first half of solve
+    if (panel == 0x0A3BA) vars.onPanelExited(0x01BEA, 1);
 
     return true;
   });
@@ -1533,7 +1571,6 @@ update {
   }
   // Exited a panel (or EP)
   if (vars.puzzle.Old != 0 && vars.puzzle.Current == 0) {
-    print(vars.playerX.Current + " " + vars.playerY.Current);
     foreach (var pair in vars.epStates) {
       if (pair.Value.Current == 0) {
         pair.Value.Update(game);
@@ -1572,7 +1609,6 @@ update {
   if (state == 0 || state == 4) return;
   if (state == 1) {
     vars.onPanelExited(vars.activePanel, state);
-    print(""+vars.activePanel);
   }
   // Theater panel + Challenge start
   if (state == 3 && (vars.activePanel == 0x00816 || vars.activePanel == 0x0A333)) {
