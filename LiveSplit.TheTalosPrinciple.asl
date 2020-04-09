@@ -410,8 +410,9 @@ isLoading {
 split {
   if (vars.line == null) return false;
 
-  if (vars.line.StartsWith("Changing over to")) { // Map changes
-    var mapName = vars.line.Substring(17);
+  if (vars.line.StartsWith("Started simulation on")) { // Map changes
+    var mapName = vars.line.Substring(23);
+    mapName = mapName.Substring(0, mapName.IndexOf("'"));
     if (mapName == vars.currentWorld) {
       vars.log("Restarted checkpoint in world " + vars.currentWorld);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
