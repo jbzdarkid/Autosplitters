@@ -1421,7 +1421,7 @@ init {
     case 0x335AC: // UTM In-Elevator Control
     case 0x335AD: // UTM Upper Elevator Control
     case 0x3369E: // UTM Lower Elevator Control
-      if (vars.playerZ > 0.0) {
+      if (vars.playerZ > 0.0f) {
         suffix = "_far";
       } else {
         target = createPointer(0x38ACC, doorTarget).Deref<float>(game);
