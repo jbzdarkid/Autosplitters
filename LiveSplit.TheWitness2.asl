@@ -1,5 +1,6 @@
 state("witness64_d3d11") {}
-// TODO: If panel is solved beyond a certain distance, split regardless of correctness.
+// TODO: Challenge start does not have a good split story. Maybe go back to using the watcher?
+//  There's no real concern about this telling you even when you didn't get it, though this is mostly about 20CC, not AL -- if you don't start the challenge in AL, you'll know. Checking the splits isn't that big of a deal.
 
 startup {
   // Relative to Livesplit.exe
@@ -275,6 +276,33 @@ init {
   vars.audioLogOffset = game.ReadValue<int>(ptr);
   vars.completedAudioLogs = new HashSet<int>();
 
+  // simulate_guy()
+  ptr = scanner.Scan(new SigScanTarget(8,
+    "F2 0F10 00",          // movsd xmm0, [rax]
+    "F2 0F11 05 ????????", // movsd [target], xmm0
+    "8B 48 08",            // mov ecx, [rax+08]
+    "89 0D ????????"       // mov [???], ecx
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find player position");
+  }
+
+  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
+  vars.playerPos = relativePosition + game.ReadValue<int>(ptr);
+  vars.GetDistanceToPlayer = (Func<int, float>) ((int panel) => {
+    var panelX = vars.createPointer(panel, 0x24).Deref<float>(game);
+    var panelY = vars.createPointer(panel, 0x28).Deref<float>(game);
+    var panelZ = vars.createPointer(panel, 0x2C).Deref<float>(game);
+    var playerX = new DeepPointer(vars.playerPos + 0x00).Deref<float>(game);
+    var playerY = new DeepPointer(vars.playerPos + 0x04).Deref<float>(game);
+    var playerZ = new DeepPointer(vars.playerPos + 0x08).Deref<float>(game);
+
+    return (float)Math.Sqrt(
+      Math.Pow(panelX - playerX, 2) +
+      Math.Pow(panelY - playerY, 2) +
+      Math.Pow(panelZ - playerZ, 2));
+  });
+
   vars.log("-------------------"
     + "\nGlobals: " + globals.ToString("X")
     + "\nSolved offset: " + vars.solvedOffset.ToString("X")
@@ -521,7 +549,11 @@ split {
       // Cinema input panel exits in state 3 on the first solve
       (vars.activePanel == 0x00815 && state == 3 && puzzleData.Item1 == 0) ||
       // Challenge start exits in state 3 sometimes
-      (vars.activePanel == 0x0A332 && state == 3)
+      (vars.activePanel == 0x0A332 && state == 3) ||
+      // If a puzzle is solved beyond a certain distance, report any state as success.
+      // Stairs snipe is ~10, Town redirect snipe is ~22, Desert surface 8 is solvable at ~25
+      // Town snipe is ~30, Quarry laser is ~32, Swamp snipe is ~45, Boathouse is ~70
+      (state != 0 && vars.GetDistanceToPlayer(panel) > 27.0f)
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Current solve count
