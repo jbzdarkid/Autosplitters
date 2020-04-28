@@ -101,8 +101,8 @@ startup {
   findConfigFiles(timer.Layout.FilePath);
   // Search for config files relative to the current splits
   findConfigFiles(timer.Run.FilePath);
-  // Search for config files relative to the last-opened splits file
-  findConfigFiles(((LiveSplit.View.TimerForm)timer.Form).RunFactory.FilePath);
+  // Search for config files relative to the last-opened splits file (missing type info)
+  // findConfigFiles(((LiveSplit.View.TimerForm)timer.Form).RunFactory.FilePath);
   // We can't run this later, because settings are baked once we exit this function.
   vars.log("Autosplitter loaded");
 }
