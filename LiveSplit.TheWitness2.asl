@@ -1,5 +1,4 @@
 state("witness64_d3d11") {}
-// TODO: Tutorial Patio EP vs Tutorial Flowers EP
 // TODO: If panel is solved beyond a certain distance, split regardless of correctness.
 
 startup {
@@ -73,31 +72,38 @@ startup {
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
 
-  // Config files may live next to Livesplit.exe or next to the splits file.
-  // Ideally, they should end with .witness_config, but they may end with .witness_conf (discord likes to truncate file extensions) or .txt (if people don't have "show file extensions" checked)
-  var files = new List<string>();
-  // Relative to LiveSplit.exe
-  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config"));
-  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_config.txt"));
-  files.AddRange(System.IO.Directory.GetFiles(Directory.GetCurrentDirectory(), "*.witness_conf"));
-  // Relative to splits file
-  if (timer.Run.FilePath != null) {
-    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config"));
-    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_config.txt"));
-    files.AddRange(System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(timer.Run.FilePath), "*.witness_conf"));
-  }
+  vars.configFiles = null;
+  vars.settings = settings;
+  var findConfigFiles = (Action<string>)((string folder) => {
+    vars.log("Searching for config files in " + folder);
+    var files = new List<string>();
+    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config"));
+    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config.txt"));
+    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_conf"));
+    vars.log("Found " + files.Count + " config files");
 
-  vars.configFiles = new Dictionary<string, string>();
-  settings.Add("configs", (vars.configFiles.Count > 0), "Split based on configuration file:");
-  foreach (var file in files) {
-    string fileName = file.Split('\\').Last();
-    if (vars.configFiles.ContainsKey(fileName)) {
-      vars.log("Found two config files with the same name: " + file + " and " + vars.configFiles[fileName]);
-      continue; // Discard the second one. Hopefully the user can figure this out.
+    // Only add the parent setting the first time we call this function
+    if (vars.configFiles == null) {
+      vars.configFiles = new Dictionary<string, string>();
+      vars.settings.Add("configs", (files.Count > 0), "Split based on configuration file:");
     }
-    vars.configFiles[fileName] = file;
-    settings.Add(fileName, false, null, "configs");
-  }
+
+    foreach (var file in files) {
+      string fileName = file.Split('\\').Last();
+      if (vars.configFiles.ContainsKey(fileName)) continue;
+      vars.configFiles[fileName] = file;
+      vars.settings.Add(fileName, false, null, "configs");
+    }
+  });
+  // Search for config files relative to LiveSplit.exe
+  findConfigFiles(Directory.GetCurrentDirectory());
+  // Search for config files relative to the current layout
+  findConfigFiles(timer.Layout.FilePath);
+  // Search for config files relative to the current splits
+  findConfigFiles(timer.Run.FilePath);
+  // Search for config files relative to the last-opened splits file
+  findConfigFiles(((LiveSplit.View.TimerForm)timer.Form).RunFactory.FilePath);
+  // We can't run this later, because settings are baked once we exit this function.
   vars.log("Autosplitter loaded");
 }
 
