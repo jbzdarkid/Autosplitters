@@ -3,7 +3,7 @@ state("witness64_d3d11") {}
 // Town RGB blue is masked by red
 // Bunker floor 2 is masked by 5
 // Windmill deactivate -> Find door
-// Use actual picture numbers rather than internal count
+// Use actual picture numbers rather than internal count?
 
 startup {
   settings.Add("Loaded", true);
@@ -223,7 +223,7 @@ init {
     {0x0053D, "Facade Right"},
     {0x0053E, "Rock Shadow"},
     {0x0053F, "Ground Shadow"},
-    {0x005F7, "Claw Ramp"},
+    {0x005F7, "Boathouse Front Ramp"},
     {0x00615, "Lift Light"},
     {0x0069E, "Ramp Light"},
     {0x006E6, "Left Facade Near"},
@@ -231,19 +231,19 @@ init {
     {0x006E8, "Left Facade Far"},
     {0x0076A, "Burned House Shadow"},
     {0x00772, "Facade Left"},
-    {0x0085A, "Ramp in Motion"},
+    {0x0085A, "Boathouse Back Ramp"},
     {0x0105E, "Left Sliding Bridge"},
     {0x016B3, "CCW Bridge Shadow"},
     {0x01849, "Hallway"},
     {0x018B7, "Blue Left Pressure Plate"},
     {0x0332C, "Black Line Reflection"},
-    {0x03336, "SE Underside"},
+    {0x03336, "SE Tower Underside"},
     {0x03368, "Black Line"},
     {0x033BF, "Yellow Pressure Plate"},
     {0x033C0, "Purple Pressure Plate"},
     {0x033DE, "Green Pressure Plate"},
     {0x033E6, "Blue Right Pressure Plate"},
-    {0x03413, "NE Underside"},
+    {0x03413, "NE Tower Underside"},
     {0x034A8, "Left Shutter"},
     {0x034AE, "Middle Shutter"},
     {0x034B0, "Right Shutter"},
@@ -256,12 +256,12 @@ init {
     {0x03602, "Outward Purple Sand"},
     {0x03604, "Around Purple Sand"},
     {0x036CF, "CW Bridge Shadow"},
-    {0x03732, "Flood Gate"},
+    {0x03732, "Floodgate"},
     {0x037B3, "Windmill Second Blade"},
     {0x037B7, "Windmill First Blade"},
     {0x037BC, "Elevator"},
-    {0x038A7, "NW Underside"},
-    {0x038AB, "SW Underside"},
+    {0x038A7, "NW Tower Underside"},
+    {0x038AB, "SW Tower Underside"},
     {0x03A7A, "Stern"},
     {0x03A94, "Underwater Yellow Line"},
     {0x03A9F, "Underwater Orange Line"},
@@ -274,7 +274,7 @@ init {
     {0x03B23, "Aft Circle"},
     {0x03B24, "Starboard Circle"},
     {0x03B25, "Port Circle"},
-    {0x03B26, "CCW Underside"},
+    {0x03B26, "Shipwreck CCW Underside"},
     {0x03BCF, "Tower Black Line"},
     {0x03BD0, "Redirect Black Line"},
     {0x03BD2, "Bell Tower Black Line"},
@@ -317,8 +317,8 @@ init {
     {0x28ABE, "Inner Rope"},
     {0x28ABF, "Outer Rope"},
     {0x28AEA, "Dirt Path"},
-    {0x28B2A, "Green Shipwreck"},
-    {0x28B2B, "CW Underside"},
+    {0x28B2A, "Shipwreck Green"},
+    {0x28B2B, "Shipwreck CW Underside"},
     {0x28B31, "Challenge"},
     {0x28B8B, "Yellow Vase"},
     {0x28B8F, "Bridge Underside"},
@@ -362,7 +362,7 @@ init {
     {0x011F9, "Mountain 1 Junk Column"},
     {0x012C7, "Keep Throne"},
     {0x015B7, "Town Obelisk"},
-    {0x015C0, "Outside Tutorial Stones"},
+    {0x015C0, "Stones Tutorial"},
     {0x015C1, "Treehouse Green Bridge"},
     {0x329FE, "Shipwreck Bridge"},
     {0x329FF, "Mill Stairs"},
@@ -383,16 +383,16 @@ init {
     {0x338B0, "Easter Egg Ending Briefcase (?)"},
     {0x338B7, "Easter Egg Ending Briefcase (?)"},
     {0x338BD, "UTM Town Shortcut"},
-    {0x338C1, "UTM Challenge Water"},
+    {0x338C1, "UTM Challenge Record"},
     {0x338C9, "UTM Mountainside Shortcut"},
     {0x338CA, "UTM Invisible Dots"},
     {0x338D7, "UTM Stairwell"},
     {0x338EF, "Easter Egg Ending Pillow"},
     {0x339A8, "Tutorial Patio Roof"},
-    {0x339A9, "Outside Tutorial Discard"},
+    {0x339A9, "Discard"},
     {0x33AFF, "Mountain 1 Purple Path Panel"},
     {0x33B36, "Peninsula "},
-    {0x33B37, "Symmetry Island Fading Lines"},
+    {0x33B37, "Symmetry Fading Lines"},
     {0x3C0F3, "Town Bell Tower"},
     {0x3C0F4, "Jungle Entrance Left"},
     {0x3C0F7, "Boat Treehouse Rock"},
@@ -402,13 +402,13 @@ init {
     {0x3C100, "Jungle Entrance Right"},
     {0x3C101, "Mountain 3 Giant Floor"},
     {0x3C102, "Jungle Laser"},
-    {0x3C103, "Mountainside Cloud Cycle"},
+    {0x3C103, "Cloud Cycle"},
     {0x3C104, "Treehouse Docks"},
     {0x3C105, "Tunnels Box"},
     {0x3C106, "Monastery Left Shutters"},
     {0x3C107, "Town Laser Redirect"},
     {0x3C108, "Easter Egg Ending Pool"},
-    {0x3C109, "Symmetry Island Behind Laser"},
+    {0x3C109, "Symmetry Behind Laser"},
     {0x3C10A, "Town Lattice Panel Right"},
     {0x3C10B, "Keep Guitar Amp"},
     {0x3C10C, "Shadows Laser"},
@@ -496,7 +496,7 @@ init {
     {0x00290, "Exterior 1"},
     {0x00293, "Front Center"},
     {0x00295, "Center Left"},
-    {0x002A6, "Mountainside Vault"},
+    {0x002A6, "Vault"},
     {0x002C2, "Front Left"},
     {0x002C4, "Waves 1"},
     {0x002C6, "Waves 3"},
@@ -572,7 +572,7 @@ init {
     {0x00A64, "Laser Blue 2"},
     {0x00A68, "Laser Blue 3"},
     {0x00A72, "Blue Cave In"},
-    {0x00AFB, "Shipwreck Vault"},
+    {0x00AFB, "Vault"},
     {0x00B10, "Left Door"},
     {0x00B53, "Transparent 4"},
     {0x00B71, "Quarry"},
@@ -646,26 +646,26 @@ init {
     {0x032F7, "Apple Tree 4"},
     {0x032FF, "Apple Tree 5"},
     {0x03317, "Back Laser"},
-    {0x0339E, "Desert Vault Box"},
-    {0x033D4, "Tutorial Vault"},
+    {0x0339E, "Vault Box"},
+    {0x033D4, "Vault"},
     {0x033EA, "Yellow Pressure Plates"},
     {0x0343A, "Melting 3"},
-    {0x03481, "Tutorial Vault Box"},
+    {0x03481, "Vault Box"},
     {0x034D4, "Ramp Activation Stars"},
     {0x034E3, "Soundproof Dots"},
     {0x034E4, "Soundproof Waves"},
     {0x034EC, "Triangle"},
     {0x034F4, "Triangle"},
     {0x03505, "Gate Close"},
-    {0x03535, "Shipwreck Vault Box"},
-    {0x03542, "Mountainside Vault Box"},
+    {0x03535, "Vault Box"},
+    {0x03542, "Vault Box"},
     {0x03545, "Mountain Video"},
     {0x03549, "Challenge Video"},
     {0x0354E, "Jungle Video"},
     {0x0354F, "Shipwreck Video"},
     {0x03552, "Desert Video"},
     {0x03553, "Tutorial Video"},
-    {0x0356B, "Challenge Vault Box"},
+    {0x0356B, "Vault Box"},
     {0x03608, "Laser"},
     {0x0360D, "Laser"},
     {0x0360E, "Front Laser"},
@@ -682,7 +682,7 @@ init {
     {0x03679, "Lower Lift Control"},
     {0x0367C, "Control Room 1"},
     {0x03686, "Upper Row 7"},
-    {0x03702, "Jungle Vault Box"},
+    {0x03702, "Vault Box"},
     {0x03713, "Shortcut"},
     {0x037FF, "Drawbridge Control"},
     {0x0383A, "Right Pillar 1"},
@@ -709,7 +709,7 @@ init {
     {0x09DB5, "Erasers and Stars 5"},
     {0x09DB8, "Summon Boat"},
     {0x09DD5, "Challenge Pillar"},
-    {0x09DE0, "Bunker Laser"},
+    {0x09DE0, "Laser"},
     {0x09E39, "Purple Pathway"},
     {0x09E49, "Shadows Shortcut"},
     {0x09E56, "Right Pillar 2"},
@@ -772,7 +772,7 @@ init {
     {0x0A049, "Surface 6"},
     {0x0A053, "Surface 7"},
     {0x0A054, "Summon Boat"},
-    {0x0A079, "Bunker Elevator"},
+    {0x0A079, "Elevator"},
     {0x0A099, "Glass Door"},
     {0x0A0C8, "Orange Crate"},
     {0x0A15C, "Final Left Convex"},
@@ -804,8 +804,8 @@ init {
     {0x0C335, "Pillar"},
     {0x0C339, "Surface Door"},
     {0x0C373, "Patio Floor"},
-    {0x0CC7B, "Desert Vault"},
-    {0x15ADD, "Jungle Vault"},
+    {0x0CC7B, "Vault"},
+    {0x15ADD, "Vault"},
     {0x17BDF, "Second Purple 5"},
     {0x17C02, "Laser Shortcut 2"},
     {0x17C05, "Laser Shortcut 1"},
@@ -816,7 +816,7 @@ init {
     {0x17C2E, "Entry Door"},
     {0x17C31, "Final Transparent"},
     {0x17C34, "Perspective"},
-    {0x17C42, "Mountainside Discard"},
+    {0x17C42, "Discard"},
     {0x17C71, "Rooftop Discard"},
     {0x17C95, "Summon Boat"},
     {0x17CA4, "Laser"},
@@ -830,15 +830,15 @@ init {
     {0x17CDF, "Summon Boat"},
     {0x17CE3, "Right Orange 4"},
     {0x17CE4, "First Purple 3"},
-    {0x17CE7, "Desert Discard"},
-    {0x17CF0, "Mill Discard"},
+    {0x17CE7, "Discard"},
+    {0x17CF0, "Discard"},
     {0x17CF2, "Waterfall Shortcut"},
     {0x17CF7, "Theater Discard"},
-    {0x17CFB, "Tutorial Discard"},
+    {0x17CFB, "Discard"},
     {0x17D01, "Orange Crate Discard"},
     {0x17D02, "Windmill Control"},
-    {0x17D27, "Keep Discard"},
-    {0x17D28, "Shipwreck Discard"},
+    {0x17D27, "Discard"},
+    {0x17D28, "Discard"},
     {0x17D2D, "First Purple 4"},
     {0x17D6C, "First Purple 5"},
     {0x17D72, "Yellow 1"},
@@ -885,7 +885,7 @@ init {
     {0x17DE3, "Left Orange 11"},
     {0x17DEC, "Left Orange 12"},
     {0x17E07, "Island Control 2"},
-    {0x17E2B, "Flood Gate Control"},
+    {0x17E2B, "Floodgate Control"},
     {0x17E3C, "Green 1"},
     {0x17E4D, "Green 2"},
     {0x17E4F, "Green 3"},
@@ -898,8 +898,8 @@ init {
     {0x17ECA, "Flood 5"},
     {0x17F5F, "Windmill Door"},
     {0x17F89, "Theater Entrance"},
-    {0x17F93, "Mountain Discard"},
-    {0x17F9B, "Jungle Discard"},
+    {0x17F93, "Discard"},
+    {0x17F9B, "Discard"},
     {0x17FA0, "Laser Discard"},
     {0x17FA2, "Secret Door"},
     {0x17FA9, "Green Bridge Discard"},
@@ -999,7 +999,7 @@ init {
     {0x3C114, "Open Door"},
     {0x3C124, "Erasers and Stars 7"},
     {0x3C125, "Control Room 2"},
-    {0x3C12B, "Symmetry Discard"},
+    {0x3C12B, "Discard"},
     {0x3C12D, "Upper Row 6"},
     {0x3D9A6, "Close Door"},
     {0x3D9A7, "Close Door"},
@@ -1107,6 +1107,12 @@ init {
         panel = 0x03546;
         name = "Mountain Video";
       }
+      break;
+    case 0x019E8: // Keep Hedges 3
+      if (vars.playerX.Current > 40.0) suffix = "_far";
+      break;
+    case 0x01A10: // Keep Hedges 4
+      if (vars.playerX.Current > 44.0) suffix = "_far";
       break;
     case 0x01A55: // Glass Factory Entry
       if (vars.playerX.Current < -180.0) suffix = "_far";
@@ -1336,7 +1342,7 @@ init {
         name += " Right";
       }
       break;
-    case 0x17E2C: // Swamp Flood Gate Control
+    case 0x17E2C: // Swamp Floodgate Control
       target = createPointer(0x17E75, doorTarget).Deref<float>(game); // Near Bridge
       if (target == 1) {
         suffix = "_l";
@@ -1369,28 +1375,30 @@ init {
     case 0x181F6: // Swamp Rotating Bridge Control
       curr = createPointer(0x005A3, doorCurrent).Deref<float>(game);
       target = createPointer(0x005A3, doorTarget).Deref<float>(game);
+      string prefix = "";
       if (curr > target) {
         suffix = "_cw";
-        name += " CW";
+        prefix = "CW";
       } else if (curr < target) {
         suffix = "_ccw";
-        name += " CCW";
+        prefix = "CCW";
       }
       if (curr == target) return false;
       target = (target + 1.0) % 1.0;
       if (target == 0) {
         suffix = "_r_b" + suffix;
-        name += " Red/Black";
+        prefix += " Red/Black";
       } else if (target == 0.25) {
         suffix = "_p_r" + suffix;
-        name += " Purple/Red";
+        prefix += " Purple/Red";
       } else if (target == 0.5) {
         suffix = "_u_p" + suffix;
-        name += " Blue/Purple";
+        prefix += " Blue/Purple";
       } else if (target == 0.75) {
         suffix = "_b_u" + suffix;
-        name += " Black/Blue";
+        prefix += " Black/Blue";
       }
+      name = prefix + " " + name;
       break;
     case 0x275FB: // Boathouse Claw Control
       target = createPointer(0x2762D, doorTarget).Deref<float>(game);
@@ -1468,7 +1476,7 @@ init {
           (168 <= source && source <= 171)) {
         if (length < 20) {
           suffix = "_swamp_QS";
-          name = "Quickstop";
+          name = "Quickstop at Treehouse";
         } else { // Couch EP
           suffix = "_treehouse_quarry";
           name = "Boat to Quarry";
