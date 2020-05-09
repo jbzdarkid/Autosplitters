@@ -78,9 +78,11 @@ startup {
   var findConfigFiles = (Action<string>)((string folder) => {
     vars.log("Searching for config files in " + folder);
     var files = new List<string>();
-    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config"));
-    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config.txt"));
-    files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_conf"));
+    if (folder != null) {
+      files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config"));
+      files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config.txt"));
+      files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_conf"));
+    }
     vars.log("Found " + files.Count + " config files");
 
     // Only add the parent setting the first time we call this function
@@ -422,7 +424,7 @@ init {
             vars.log("Encountered unknown mode: " + mode);
             continue;
           }
-          watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X");
+          watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X").PadLeft(5, '0');
           vars.watchers.Add(watcher);
           vars.log("Watching " + watcher.Name);
         }
