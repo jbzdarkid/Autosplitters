@@ -72,7 +72,6 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
-  settings.Add("Extra debugging for random splits", false);
 
   vars.panelToString = (Func<int, string>)((int id) => {
     return "0x" + id.ToString("X").PadLeft(5, '0');
@@ -143,22 +142,24 @@ init {
   int globals = relativePosition + game.ReadValue<int>(ptr+46);
 
   // judge_panel()
-  ptr = scanner.Scan(new SigScanTarget(0,
+  ptr = scanner.Scan(new SigScanTarget(2,
     "C7 83 ???????? 01000000", // mov [rbx+offset], 1
     "48 0F45 C8"               // cmovne rcx, rax
   ));
   if (ptr == IntPtr.Zero) {
-    throw new Exception("Could not find solved and completed offsets!");
+    throw new Exception("Could not find solved offset!");
   }
-  vars.solvedOffset = game.ReadValue<int>(ptr+2);
-  vars.completedOffset = game.ReadValue<int>(ptr+38);
-  if (settings["Extra debugging for random splits"]) {
-    var output = "";
-    for (var i=-11; i<100; i++) {
-      output += " 0x" + game.ReadValue<byte>(ptr + i).ToString("X").PadLeft(2, '0');
-    }
-    vars.log(output);
+  vars.solvedOffset = game.ReadValue<int>(ptr);
+
+  // count_score()
+  ptr = scanner.Scan(new SigScanTarget(7,
+    "44 89 74 24 20", // mov [rsp+20], r14d
+    "39 9F ????????"  // cmp [rdi+offset], ebx
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find completed offset!");
   }
+  vars.completedOffset = game.ReadValue<int>(ptr);
 
   // found_a_pattern()
   ptr = scanner.Scan(new SigScanTarget(12,
