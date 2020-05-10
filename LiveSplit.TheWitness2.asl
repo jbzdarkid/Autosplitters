@@ -72,6 +72,9 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
+  vars.panelToString = (Func<int, string>)((int id) => {
+    return "0x" + id.ToString("X").PadLeft(5, '0');
+  });
 
   vars.configFiles = null;
   vars.settings = settings;
@@ -359,13 +362,13 @@ init {
       foreach (var panel in vars.keepWalkOns) {
         // A little bit of a hack -- keep purple is essentially a multipanel, so we need to use the solved offset.
         var watcher = new MemoryWatcher<int>(vars.createPointer(panel, vars.solvedOffset));
-        watcher.Name = "Keep walk-on 0x" + panel.ToString("X");
+        watcher.Name = "Keep walk-on " + vars.panelToString(panel);
         vars.watchers.Add(watcher);
       }
       foreach (var panel in vars.multipanel) {
         vars.addPanel(panel, 0);
         var watcher = new MemoryWatcher<int>(vars.createPointer(panel, vars.completedOffset));
-        watcher.Name = "Multipanel 0x" + panel.ToString("X");
+        watcher.Name = "Multipanel " + vars.panelToString(panel);
         vars.watchers.Add(watcher);
       }
       vars.watchers.UpdateAll(game);
@@ -424,7 +427,7 @@ init {
             vars.log("Encountered unknown mode: " + mode);
             continue;
           }
-          watcher.Name = mode.TrimEnd('s') + " 0x" + id.ToString("X").PadLeft(5, '0');
+          watcher.Name = mode.TrimEnd('s') + ' ' + vars.panelToString(id);
           vars.watchers.Add(watcher);
           vars.log("Watching " + watcher.Name);
         }
@@ -524,9 +527,9 @@ split {
     int panel = vars.puzzle.Current - 1;
     if (vars.allPanels.Contains(panel)) { // Only set activePanel if it's actually a panel.
       vars.activePanel = panel;
-      vars.log("Started panel 0x"+panel.ToString("X"));
+      vars.log("Started panel " + vars.panelToString(panel));
       if (!vars.panels.ContainsKey(panel)) {
-        vars.log("Encountered new panel 0x"+panel.ToString("X"));
+        vars.log("Encountered new panel " + vars.panelToString(panel));
         if (settings["Split on all panels (solving and non-solving)"]) {
           vars.addPanel(panel, 1);
         } else {
@@ -562,13 +565,13 @@ split {
         puzzleData.Item2,     // Maximum solve count
         puzzleData.Item3      // State pointer
       );
-      vars.log("Panel 0x" + panel.ToString("X") + " has been solved " + vars.panels[panel].Item1+ " of "+puzzleData.Item2 + " time(s)");
+      vars.log("Panel " + vars.panelToString(panel) + " has been solved " + vars.panels[panel].Item1 + " of " + puzzleData.Item2 + " time(s)");
       vars.activePanel = -1;
       if (puzzleData.Item1 < puzzleData.Item2) { // Split fewer times than the max
         return true;
       }
     } else if (state != 0) {
-      vars.log("Panel 0x" + panel.ToString("X") + " exited in state " + state);
+      vars.log("Panel " + vars.panelToString(panel) + " exited in state " + state);
       vars.activePanel = -1;
       if (state == 2 || state == 3) vars.deathCount++;
     }
@@ -587,11 +590,11 @@ split {
     vars.audioLog.Update(game);
     if (vars.audioLog.Old == 0 && vars.audioLog.Current != 0) {
       var audioLog = vars.audioLog.Current - 1;
-      vars.log("Started hovering over audio log: 0x" + audioLog.ToString("X"));
+      vars.log("Started hovering over audio log: " + vars.panelToString(audioLog));
       vars.hoveringOverAudioLog = new MemoryWatcher<int>(vars.createPointer(audioLog, vars.audioLogOffset));
     } else if (vars.audioLog.Old != 0 && vars.audioLog.Current == 0) {
       var audioLog = vars.audioLog.Old - 1;
-      vars.log("Stopped hovering over audio log: 0x" + audioLog.ToString("X"));
+      vars.log("Stopped hovering over audio log: " + vars.panelToString(audioLog));
       vars.hoveringOverAudioLog = null;
     }
 
@@ -599,7 +602,7 @@ split {
       vars.hoveringOverAudioLog.Update(game);
       if (vars.hoveringOverAudioLog.Old == 0 && vars.hoveringOverAudioLog.Current == 1) {
         vars.activeAudioLog = vars.audioLog.Current - 1;
-        vars.log("Started playing audio log: 0x" + vars.activeAudioLog.ToString("X"));
+        vars.log("Started playing audio log: " + vars.panelToString(vars.activeAudioLog));
         vars.activelyPlayingAudioLog = vars.hoveringOverAudioLog;
         vars.hoveringOverAudioLog = null;
         return settings["Split on audio logs"];
@@ -609,7 +612,7 @@ split {
     if (vars.activelyPlayingAudioLog != null) {
       vars.activelyPlayingAudioLog.Update(game);
       if (vars.activelyPlayingAudioLog.Old == 1 && vars.activelyPlayingAudioLog.Current == 0) {
-        vars.log("Audio log 0x" + vars.activeAudioLog.ToString("X") + " stopped playing");
+        vars.log("Audio log " + vars.panelToString(vars.activeAudioLog) + " stopped playing");
         vars.activelyPlayingAudioLog = null;
 
         int played = vars.createPointer(vars.activeAudioLog, vars.audioLogOffset + 4).Deref<int>(game);
