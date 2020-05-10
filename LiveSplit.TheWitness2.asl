@@ -72,6 +72,8 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
+  settings.Add("Extra debugging for random splits", false);
+
   vars.panelToString = (Func<int, string>)((int id) => {
     return "0x" + id.ToString("X").PadLeft(5, '0');
   });
@@ -150,6 +152,13 @@ init {
   }
   vars.solvedOffset = game.ReadValue<int>(ptr+2);
   vars.completedOffset = game.ReadValue<int>(ptr+38);
+  if (settings["Extra debugging for random splits"]) {
+    var output = "";
+    for (var i=-11; i<100; i++) {
+      output += " 0x" + game.ReadValue<byte>(ptr + i).ToString("X").PadLeft(2, '0');
+    }
+    vars.log(output);
+  }
 
   // found_a_pattern()
   ptr = scanner.Scan(new SigScanTarget(12,
