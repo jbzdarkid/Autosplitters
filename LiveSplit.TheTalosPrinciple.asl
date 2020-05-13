@@ -3,7 +3,9 @@ state("Talos_Unrestricted") {}
 state("Talos_VR") {}
 
 // TODO: Splitter doesn't restart when resetting from a terminal? Confirmed, but what to do about it?
+//   This might be fixed now.
 // TODO: "Split when returning to nexus" triggered in A5? Can't reproduce, logs were non-verbose. Will be fixed if/when I change to pointers instead of logging
+// TODO: currentWorld isn't reset on stop run -- this might cause issues (somehow)
 
 startup {
   // Commonly used, defaults to true
@@ -410,23 +412,29 @@ isLoading {
 split {
   if (vars.line == null) return false;
 
-  if (vars.line.StartsWith("Started simulation on")) { // Map changes
-    var mapName = vars.line.Substring(23);
-    mapName = mapName.Substring(0, mapName.IndexOf("'"));
+  if (vars.line.StartsWith("Changing over to")) { // Initial level change (for the purpose of splitting)
+    var mapName = vars.line.Substring(17);
     if (mapName == vars.currentWorld) {
-      vars.log("Restarted checkpoint in world " + vars.currentWorld);
+      vars.log("Restarted checkpoint in world " + mapName);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
-    vars.log("Changed worlds from " + vars.currentWorld + " to " + mapName);
-    vars.currentWorld = mapName;
     if (settings["Split on return to Nexus or DLC Hub"] &&
       (mapName.EndsWith("Nexus.wld") ||
        mapName.EndsWith("DLC_01_Hub.wld"))) {
+      vars.log("Returned to Nexus/Hub from " + vars.currentWorld);
       return true;
     }
     if (settings["(Custom/DLC) Split on any world transition"]) {
+      vars.log("Initial load for world change from " + mapName + " to " + vars.currentWorld);
       return true;
     }
+  }
+
+  if (vars.line.StartsWith("Started simulation on")) { // Map changes (for the purpose of current world)
+    var mapName = vars.line.Substring(23);
+    mapName = mapName.Substring(0, mapName.IndexOf("'"));
+    vars.log("Changed worlds from " + vars.currentWorld + " to " + mapName);
+    vars.currentWorld = mapName;
   }
 
   // Sigil, robot, and star collection
