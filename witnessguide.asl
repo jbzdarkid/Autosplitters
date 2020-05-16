@@ -1429,7 +1429,7 @@ init {
     case 0x335AC: // UTM In-Elevator Control
     case 0x335AD: // UTM Upper Elevator Control
     case 0x3369E: // UTM Lower Elevator Control
-      if (vars.playerZ > 0.0f) {
+      if (vars.playerZ.Current > 0.0f) {
         suffix = "_far";
       } else {
         target = createPointer(0x38ACC, doorTarget).Deref<float>(game);
@@ -1569,6 +1569,7 @@ update {
   vars.puzzle.Update(game);
   vars.playerX.Update(game);
   vars.playerY.Update(game);
+  vars.playerZ.Update(game);
   vars.audioLog.Update(game);
   vars.keepWatchers.UpdateAll(game);
 
