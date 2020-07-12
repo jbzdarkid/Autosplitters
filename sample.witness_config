@@ -1,7 +1,9 @@
 # This is a comment.
 # Once a # is placed in a line, no further characters in the line will be processed.
 # You can use them to add notes to a line, or to temporarily disable a line.
-# I use them to give a helpful name to the panel IDs.
+# I use them to give a helpful names for the IDs
+# For a full list of IDs, go here:
+# https://docs.google.com/spreadsheets/d/13Qohr67j9bgDdazimJOCkpmq7avVDjrPwmbyGGfCdsI/edit#gid=2121658720
 
 version: 1
 panels: # List of panels that you want to split on. Each panel will only split once.
@@ -36,3 +38,7 @@ eps: # Environmental Puzzles/Patterns.
 
 doors: # This will split when the door starts opening
 0x9E54 # First Mountain Floor
+
+audiologs: # Split the first time you solve an audio log with this ID
+0x00A0F # Mountaintop
+0x015C0	# Tutorial Stones

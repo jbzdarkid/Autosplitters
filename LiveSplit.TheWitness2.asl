@@ -349,6 +349,7 @@ init {
   vars.panels = new Dictionary<int, Tuple<int, int, DeepPointer>>();
   vars.obeliskWatchers = new MemoryWatcherList();
   vars.watchers = new MemoryWatcherList();
+  vars.watchedAudiologs = new HashSet<int>();
 
   if (settings["Split on environmental patterns"]) {
     foreach (int obelisk in vars.obelisks) {
@@ -361,6 +362,7 @@ init {
     vars.hoveringOverAudioLog = null;
     vars.activelyPlayingAudioLog = null;
     vars.completedAudioLogs.Clear();
+    vars.watchedAudiologs.Clear();
     vars.epCount = 0;
     vars.obeliskWatchers.UpdateAll(game);
     foreach (var watcher in vars.obeliskWatchers) vars.epCount += watcher.Current;
@@ -402,8 +404,8 @@ init {
         string mode = "";
         int version = 0;
         for (int i=0; i<lines.Length; i++) {
-          var line = lines[i].Split('#')[0]; // First, strip comments
-          line = line.Trim();
+          var line = lines[i].Split('#')[0]; // Strip comments
+          line = line.Trim(); // Strip whitespace
           if (line == "") continue; // No reason to process empty lines
 
           if (line.Contains(':')) {
@@ -412,6 +414,8 @@ init {
             if (mode == "version") version = Int32.Parse(parts[1]);
             continue;
           }
+          // Don't try to process the file if it's an unknown version
+          if (version > 1) continue;
 
           int id = Convert.ToInt32(line, 16);
           MemoryWatcher watcher = null;
@@ -433,6 +437,9 @@ init {
             watcher = new MemoryWatcher<int>(vars.createPointer(id, vars.epOffset));
           } else if (mode == "doors") {
             watcher = new MemoryWatcher<float>(vars.createPointer(id, vars.doorOffset));
+          } else if (mode == "audiologs") {
+            vars.watchedAudiologs.Add(id);
+            continue;
           } else {
             vars.log("Encountered unknown mode: " + mode);
             continue;
@@ -595,7 +602,7 @@ split {
     }
   }
 
-  if (settings["Split on audio logs"]
+  if (settings["Split on audio logs"] || vars.watchedAudiologs.Count > 0
    || settings["Override first text component with a Completed Audio Logs count"]) {
     vars.audioLog.Update(game);
     if (vars.audioLog.Old == 0 && vars.audioLog.Current != 0) {
@@ -615,7 +622,12 @@ split {
         vars.log("Started playing audio log: " + vars.panelToString(vars.activeAudioLog));
         vars.activelyPlayingAudioLog = vars.hoveringOverAudioLog;
         vars.hoveringOverAudioLog = null;
-        return settings["Split on audio logs"];
+        if (settings["Split on audio logs"]) {
+          return true;
+        } else if (vars.watchedAudiologs.Contains(vars.activeAudioLog)) {
+          vars.watchedAudiologs.Remove(vars.activeAudioLog);
+          return true;
+        }
       }
     }
 
