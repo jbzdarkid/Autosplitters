@@ -29,7 +29,7 @@ startup {
   settings.Add("Split when exiting Floor 5", false);
   settings.Add("Start the run in any world", false);
   settings.Add("(Custom/DLC) Split when solving any arranger", false);
-  settings.Add("(Custom/DLC) Split on any world transition", false);
+  settings.Add("(Custom/DLC) Split on any world transition (except Nexus/Hub)", false);
 
   settings.Add("worldsplits", true, "Don't split on sigil collections in these worlds:");
   settings.CurrentDefaultParent = "worldsplits";
@@ -418,15 +418,17 @@ split {
       vars.log("Restarted checkpoint in world " + mapName);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
-    if (settings["Split on return to Nexus or DLC Hub"] &&
-      (mapName.EndsWith("Nexus.wld") ||
-       mapName.EndsWith("DLC_01_Hub.wld"))) {
-      vars.log("Returned to Nexus/Hub from " + vars.currentWorld);
-      return true;
-    }
-    if (settings["(Custom/DLC) Split on any world transition"]) {
-      vars.log("Initial load for world change from " + mapName + " to " + vars.currentWorld);
-      return true;
+
+    if (mapName.EndsWith("Nexus.wld") || mapName.EndsWith("DLC_01_Hub.wld")) {
+      if (settings["Split on return to Nexus or DLC Hub"]) {
+        vars.log("Returned to Nexus/Hub from " + vars.currentWorld);
+        return true;
+      }
+    } else {
+      if (settings["(Custom/DLC) Split on any world transition (except Nexus/Hub)"]) {
+        vars.log("Initial load for world change from " + mapName + " to " + vars.currentWorld);
+        return true;
+      }
     }
   }
 
