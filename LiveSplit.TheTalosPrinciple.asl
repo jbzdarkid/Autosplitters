@@ -14,6 +14,15 @@ startup {
   settings.Add("Split on item unlocks", true);
   settings.Add("Split on star collection in the Nexus", true);
 
+  settings.Add("wrongwarpsplits", true, "Split on Warp (will undo split on failed Wrong Warp, aka going back):");
+  settings.CurrentDefaultParent = "wrongwarpsplits";
+  settings.Add("wrongwarpsplits-A6", false, "From A6 to Nexus");
+  settings.Add("wrongwarpsplits-DLCWorld1", false, "(DLC) From World 1 to Hub");
+  settings.Add("wrongwarpsplits-DLCWorld2", false, "(DLC) From World 2 to Hub");
+  settings.Add("wrongwarpsplits-DLCWorld3", false, "(DLC) From World 3 to Hub");
+  settings.Add("wrongwarpsplits-DLCWorld4", false, "(DLC) From World 4 to Hub");
+  settings.CurrentDefaultParent = null;
+
   settings.Add("Split on Nexus green world doors", true);
   settings.Add("Split on Nexus red tower doors", false);
   settings.Add("Split on the Nexus gray Floor 6 door", false);
@@ -40,8 +49,8 @@ startup {
   settings.Add("worldsplits-B4", false, "B4");
   settings.Add("worldsplits-B6", false, "B6");
   settings.Add("worldsplits-B8", false, "B8");
-
   settings.CurrentDefaultParent = null;
+
   settings.Add("bug2", false, "Additional logging for Ninja bug, where splits were completely missed");
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
@@ -157,6 +166,27 @@ startup {
     {"Content/Talos/Levels/Z_HolyDays/HD_Cloud_Xmas.wld", false}, // The Holy Days
     {"Content/Talos/Levels/TheOnlyPuzzle/TheOnlyPuzzle_00.wld", false} // This is The Only Puzzle
   };
+
+  // Returns true when it handled splitting for the Wrong Warp and execution should be stopped
+  vars.handleWrongWarpSplit = (Func<string, string, bool>)((string warpFrom, string nextWorld) => {
+    // Check if we're going back to a level we expected to Wrong Warp from
+    if (nextWorld.EndsWith(warpFrom) && vars.lastAttemptedWarp == nextWorld) {
+      vars.log("Failed warp from '" + warpFrom + "'");
+      vars.lastAttemptedWarp = "";
+      vars.timerModel.UndoSplit();
+      return true;
+    }
+    // Check if we're leaving a level we expect to Wrong Warp from
+    if (vars.currentWorld.EndsWith(warpFrom)) {
+      vars.log("Attempted warp from '" + warpFrom + "'");
+      vars.lastAttemptedWarp = vars.currentWorld;
+      vars.timerModel.Split();
+      return true;
+    }
+    return false;
+  });
+
+  vars.timerModel = new TimerModel { CurrentState = timer };
 }
 
 init {
@@ -384,6 +414,7 @@ start {
     vars.currentWorld = world;
     vars.lastSigil = "";
     vars.graySigils = 0;
+    vars.lastAttemptedWarp = "";
     timer.IsGameTimePaused = true;
     return true;
   }
@@ -418,6 +449,13 @@ split {
       vars.log("Restarted checkpoint in world " + mapName);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
+
+    if (settings["wrongwarpsplits-A6"] && vars.handleWrongWarpSplit("Cloud_1_06.wld", mapName)) return false;
+    if (settings["wrongwarpsplits-DLCWorld1"] && vars.handleWrongWarpSplit("DLC_01_01.wld", mapName)) return false;
+    if (settings["wrongwarpsplits-DLCWorld2"] && vars.handleWrongWarpSplit("DLC_01_02.wld", mapName)) return false;
+    if (settings["wrongwarpsplits-DLCWorld3"] && vars.handleWrongWarpSplit("DLC_01_03.wld", mapName)) return false;
+    if (settings["wrongwarpsplits-DLCWorld4"] && vars.handleWrongWarpSplit("DLC_01_04.wld", mapName)) return false;
+
     if (settings["Split on return to Nexus or DLC Hub"] &&
       (mapName.EndsWith("Nexus.wld") ||
        mapName.EndsWith("DLC_01_Hub.wld"))) {
