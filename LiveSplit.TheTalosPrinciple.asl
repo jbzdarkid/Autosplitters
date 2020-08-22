@@ -29,7 +29,7 @@ startup {
   settings.Add("Split when exiting Floor 5", false);
   settings.Add("Start the run in any world", false);
   settings.Add("(Custom/DLC) Split when solving any arranger", false);
-  settings.Add("(Custom/DLC) Split on any world transition (except Nexus/Hub)", false);
+  settings.Add("(Custom/DLC) Split on any world transition other than Nexus/Hub", false);
 
   settings.Add("worldsplits", true, "Don't split on sigil collections in these worlds:");
   settings.CurrentDefaultParent = "worldsplits";
@@ -425,7 +425,7 @@ split {
         return true;
       }
     } else {
-      if (settings["(Custom/DLC) Split on any world transition (except Nexus/Hub)"]) {
+      if (settings["(Custom/DLC) Split on any world transition other than Nexus/Hub"]) {
         vars.log("Initial load for world change from " + mapName + " to " + vars.currentWorld);
         return true;
       }
