@@ -353,7 +353,8 @@ update {
 }
 
 start {
-  if (vars.line == null) return false;
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
+
   var match = vars.startRegex.Match(vars.line);
   if (!match.Success) return false;
   var world = match.Groups[1].Value;
@@ -383,6 +384,8 @@ start {
 }
 
 reset {
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
+  
   if (vars.line == "Saving talos progress upon game stop." ||
     vars.line == "Saving game progress upon game stop.") {
     vars.log("Stopped run because the game was stopped.");
@@ -403,7 +406,7 @@ isLoading {
 }
 
 split {
-  if (vars.line == null) return false;
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
 
   if (vars.line.StartsWith("Changing over to")) { // Initial level change (for the purpose of splitting)
     var mapName = vars.line.Substring(17);
