@@ -162,13 +162,10 @@ startup {
 init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
+  vars.log("Game directory: '" + gameDir + "'");
 
-  var index = gameDir.LastIndexOf("\\Bin\\");
+  var index = gameDir.LastIndexOf("\\Bin");
   var logPath = gameDir.Substring(0, index + 1) + "Log/" + game.ProcessName + ".log";
-  if (!File.Exists(logPath)) {
-    logPath = "";
-    vars.log("No log file found at computed log path, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
-  }
   vars.log("Computed log path: '" + logPath + "'");
 
   // To find the cheats pointer:
@@ -319,7 +316,7 @@ init {
   }
   vars.log("Using game version: " + version);
 
-  if (logPath != "") {
+  if (File.Exists(logPath)) {
     try { // Wipe the log file to clear out messages from last time
       FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
       fs.SetLength(0);
@@ -327,6 +324,7 @@ init {
     } catch {} // May fail if file doesn't exist.
     vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
   } else {
+    vars.log("No log file found at computed log path, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
     // Set defaults for the rest of the script. The split block will not run, but the isLoading block will.
     vars.reader = null;
     vars.line = null;
