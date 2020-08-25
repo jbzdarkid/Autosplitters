@@ -162,20 +162,10 @@ startup {
 init {
   var page = modules.First();
   var gameDir = Path.GetDirectoryName(page.FileName);
+  vars.log("Game directory: '" + gameDir + "'");
 
-  string logPath = "";
-  if (gameDir.Contains("The Talos Principle")) {
-    // Steam log file
-    var index = gameDir.IndexOf("The Talos Principle");
-    logPath = gameDir.Substring(0, index + 19) + "/Log/" + game.ProcessName + ".log";
-  } else if (gameDir.Contains("TheTalosPrinciple")) {
-    // Epic Games log file
-    var index = gameDir.IndexOf("TheTalosPrinciple");
-    logPath = gameDir.Substring(0, index + 17) + "/Log/" + game.ProcessName + ".log";
-  } else {
-    // Xbox (Microsoft) log file does not exist
-    vars.log("No log file found, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
-  }
+  var index = gameDir.LastIndexOf("\\Bin");
+  var logPath = gameDir.Substring(0, index + 1) + "Log/" + game.ProcessName + ".log";
   vars.log("Computed log path: '" + logPath + "'");
 
   // To find the cheats pointer:
@@ -326,7 +316,7 @@ init {
   }
   vars.log("Using game version: " + version);
 
-  if (logPath != "") {
+  if (File.Exists(logPath)) {
     try { // Wipe the log file to clear out messages from last time
       FileStream fs = new FileStream(logPath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
       fs.SetLength(0);
@@ -334,6 +324,7 @@ init {
     } catch {} // May fail if file doesn't exist.
     vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
   } else {
+    vars.log("No log file found at computed log path, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
     // Set defaults for the rest of the script. The split block will not run, but the isLoading block will.
     vars.reader = null;
     vars.line = null;
@@ -360,38 +351,41 @@ update {
 }
 
 start {
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
+
   var match = vars.startRegex.Match(vars.line);
-  if (match.Success) {
-    var world = match.Groups[1].Value;
-    // Main menu and settings count as 'worlds', ignore them
-    if (world.Contains("Menu")) return false;
+  if (!match.Success) return false;
+  var world = match.Groups[1].Value;
+  // Main menu and settings count as 'worlds', ignore them
+  if (world.Contains("Menu")) return false;
 
-    if (vars.cheatFlags != null && vars.cheatFlags.Current != 0) {
-      vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
-      if (settings["Don't start the run if cheats are active"]) {
-        vars.log("Not starting the run because of cheats");
-        return false;
-      }
-    }
-
-    if (vars.knownStartingWorlds.ContainsKey(world)) {
-      vars.introCutscene = vars.knownStartingWorlds[world];
-    } else if (!settings["Start the run in any world"]) {
+  if (vars.cheatFlags != null && vars.cheatFlags.Current != 0) {
+    vars.log("Cheats are currently active: " + vars.cheatFlags.Current);
+    if (settings["Don't start the run if cheats are active"]) {
+      vars.log("Not starting the run because of cheats");
       return false;
     }
-    vars.log("Started a new run in " + world);
-
-    vars.currentWorld = world;
-    vars.lastSigil = "";
-    vars.graySigils = 0;
-    timer.IsGameTimePaused = true;
-    return true;
   }
+
+  if (vars.knownStartingWorlds.ContainsKey(world)) {
+    vars.introCutscene = vars.knownStartingWorlds[world];
+  } else if (!settings["Start the run in any world"]) {
+    return false;
+  }
+  vars.log("Started a new run in " + world);
+
+  vars.currentWorld = world;
+  vars.lastSigil = "";
+  vars.graySigils = 0;
+  timer.IsGameTimePaused = true;
+  return true;
 }
 
 reset {
-  if (vars.line == "Saving talos progress upon game stop."
-   || vars.line == "Saving game progress upon game stop.") {
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
+  
+  if (vars.line == "Saving talos progress upon game stop." ||
+    vars.line == "Saving game progress upon game stop.") {
     vars.log("Stopped run because the game was stopped.");
     return true; // Unique line printed only when you stop the game / stop moddable
   }
@@ -410,7 +404,7 @@ isLoading {
 }
 
 split {
-  if (vars.line == null) return false;
+  if (vars.line == null) return false; // If there is no logfile, don't run this block.
 
   if (vars.line.StartsWith("Changing over to")) { // Initial level change (for the purpose of splitting)
     var mapName = vars.line.Substring(17);
