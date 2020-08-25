@@ -166,6 +166,7 @@ init {
 
   var index = gameDir.LastIndexOf("\\Bin");
   var logPath = gameDir.Substring(0, index + 1) + "Log/" + game.ProcessName + ".log";
+
   vars.log("Computed log path: '" + logPath + "'");
 
   // To find the cheats pointer:
