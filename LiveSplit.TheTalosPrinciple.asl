@@ -11,6 +11,8 @@ startup {
   // Commonly used, defaults to true
   settings.Add("Don't start the run if cheats are active", true);
   settings.Add("Split on return to Nexus or DLC Hub", true);
+  settings.Add("Unsplit when re-entering the world you just left", false, "Unsplit when re-entering a world", "Split on return to Nexus or DLC Hub");
+
   settings.Add("Split on item unlocks", true);
   settings.Add("Split on star collection in the Nexus", true);
 
@@ -28,8 +30,8 @@ startup {
   settings.Add("Split on Community% ending", false); // Community% completion -- mostly unused
   settings.Add("Split when exiting Floor 5", false);
   settings.Add("Start the run in any world", false);
+  settings.Add("Split on any world transition", false);
   settings.Add("(Custom/DLC) Split when solving any arranger", false);
-  settings.Add("(Custom/DLC) Split on any world transition", false);
 
   settings.Add("worldsplits", true, "Don't split on sigil collections in these worlds:");
   settings.CurrentDefaultParent = "worldsplits";
@@ -325,7 +327,7 @@ init {
     vars.reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
   } else {
     vars.log("No log file found at computed log path, automatic start, stop, and splits will not work. Loading should still work if the timer is started manually.");
-    // Set defaults for the rest of the script. The split block will not run, but the isLoading block will.
+    // Set defaults for the rest of the script. The start/split/reset blocks will not run, but the isLoading block will.
     vars.reader = null;
     vars.line = null;
   }
@@ -375,6 +377,7 @@ start {
   vars.log("Started a new run in " + world);
 
   vars.currentWorld = world;
+  vars.lastExitedWorld = "";
   vars.lastSigil = "";
   vars.graySigils = 0;
   timer.IsGameTimePaused = true;
@@ -383,7 +386,7 @@ start {
 
 reset {
   if (vars.line == null) return false; // If there is no logfile, don't run this block.
-  
+
   if (vars.line == "Saving talos progress upon game stop." ||
     vars.line == "Saving game progress upon game stop.") {
     vars.log("Stopped run because the game was stopped.");
@@ -413,12 +416,18 @@ split {
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
     }
     if (settings["Split on return to Nexus or DLC Hub"] &&
-      (mapName.EndsWith("Nexus.wld") ||
-       mapName.EndsWith("DLC_01_Hub.wld"))) {
+      (mapName.EndsWith("Nexus.wld") || mapName.EndsWith("DLC_01_Hub.wld"))) {
       vars.log("Returned to Nexus/Hub from " + vars.currentWorld);
+      vars.lastExitedWorld = vars.currentWorld;
       return true;
     }
-    if (settings["(Custom/DLC) Split on any world transition"]) {
+    if (settings["Unsplit when re-entering the world you just left"] &&
+      mapName == vars.lastExitedWorld) {
+      vars.log("Re-entered world " + vars.lastExitedWorld + ", undoing split");
+      new TimerModel{CurrentState = timer}.UndoSplit();
+      return false;
+    }
+    if (settings["Split on any world transition"]) {
       vars.log("Initial load for world change from " + mapName + " to " + vars.currentWorld);
       return true;
     }
