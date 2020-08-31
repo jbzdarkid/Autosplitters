@@ -166,8 +166,15 @@ init {
   var gameDir = Path.GetDirectoryName(page.FileName);
   vars.log("Game directory: '" + gameDir + "'");
 
+  // Steam x64:   Steam\steamapps\common\The Talos Principle\Bin\x64\
+  // Steam x86:   Steam\steamapps\common\The Talos Principle\Bin\
+  // Epic Games:  Epic Games\TheTalosPrinciple\
+  // Xbox:        N/A
   var index = gameDir.LastIndexOf("\\Bin");
-  var logPath = gameDir.Substring(0, index + 1) + "Log/" + game.ProcessName + ".log";
+  var logPath = (index == -1
+    ? gameDir
+    : gameDir.Substring(0, index)
+  ) + "/Log/" + game.ProcessName + ".log";
   vars.log("Computed log path: '" + logPath + "'");
 
   // To find the cheats pointer:
