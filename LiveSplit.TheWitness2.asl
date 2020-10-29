@@ -72,6 +72,7 @@ startup {
   settings.Add("Split on easter egg ending", true);
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
+  settings.Add("(Amerald Debugging)", false);
 
   vars.panelToString = (Func<int, string>)((int id) => {
     return "0x" + id.ToString("X").PadLeft(5, '0');
@@ -113,6 +114,7 @@ startup {
   // findConfigFiles(((LiveSplit.View.TimerForm)timer.Form).RunFactory.FilePath);
   // We can't run this later, because settings are baked once we exit this function.
   vars.log("Autosplitter loaded");
+  vars.log("If you don't see a state descriptor below, your executable is named wrong.");
 }
 
 init {
@@ -456,7 +458,8 @@ init {
     vars.deathCount = 0;
     vars.updateText = false;
     if (settings["Override first text component with a Failed Panels count"]
-     || settings["Override first text component with a Completed Audio Logs count"]) {
+     || settings["Override first text component with a Completed Audio Logs count"]
+     || settings["(Amerald Debugging)"]) {
       foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
         if (component.GetType().Name == "TextComponent") {
           vars.tc = component;
@@ -493,10 +496,15 @@ update {
     if (settings["Override first text component with a Failed Panels count"]) {
       vars.tcs.Text1 = "Failed Panels:";
       vars.tcs.Text2 = vars.deathCount.ToString();
-    }
-    if (settings["Override first text component with a Completed Audio Logs count"]) {
+    } else if (settings["Override first text component with a Completed Audio Logs count"]) {
       vars.tcs.Text1 = "Audio Logs:";
       vars.tcs.Text2 = vars.completedAudioLogs.Count.ToString();
+    } else if (settings["(Amerald Debugging)"]) {
+      vars.tcs.Text1 = vars.panelToString(vars.activePanel);
+      if (vars.panels.ContainsKey(vars.activePanel)) {
+        var puzzleData = vars.panels[vars.activePanel];
+        vars.tcs.Text2 = "" + puzzleData.Item3.Deref<int>(game);
+      }
     }
   }
 }
