@@ -45,6 +45,7 @@ startup {
 
   settings.CurrentDefaultParent = null;
   settings.Add("bug2", false, "Additional logging for Ninja bug, where splits were completely missed");
+  settings.Add("bug3", false, "Additional logging for Steph bug, where returning to nexus doesn't split");
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_talos.log";
   vars.log = (Action<string>)((string logLine) => {
@@ -433,6 +434,15 @@ split {
     if (mapName == vars.currentWorld) {
       vars.log("Restarted checkpoint in world " + mapName);
       return false; // Ensure 'restart checkpoint' doesn't trigger map change
+    }
+    if (settings["bug3"]) {
+      vars.log("Full line: " + vars.line);
+      vars.log("Map name: " + mapName);
+      vars.log("Current world: " + vars.currentWorld);
+      var a = settings["Split on return to Nexus or DLC Hub"];
+      var b = mapName.EndsWith("Nexus.wld");
+      var c = mapName.EndsWith("DLC_01_Hub.wld");
+      vars.log(a.ToString() + ' ' + b.ToString() + ' ' + c.ToString() + ' ' + (a && (b || c)).ToString());
     }
     if (settings["Split on return to Nexus or DLC Hub"] &&
       (mapName.EndsWith("Nexus.wld") || mapName.EndsWith("DLC_01_Hub.wld"))) {
