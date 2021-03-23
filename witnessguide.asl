@@ -1353,10 +1353,10 @@ init {
     case 0x17E2C: // Swamp Floodgate Control
       target = createPointer(0x17E75, doorTarget).Deref<float>(game); // Near Bridge
       if (target == 1) {
-        suffix = "_l";
+        suffix = "_r";
       } else {
         target = createPointer(0x1802D, doorTarget).Deref<float>(game); // Far Bridge
-        if (target == 1) suffix = "_r";
+        if (target == 1) suffix = "_l";
         if (target == 0) suffix = "_b";
       }
       break;
