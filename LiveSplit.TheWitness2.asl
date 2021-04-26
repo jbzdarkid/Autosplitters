@@ -320,6 +320,16 @@ init {
       Math.Pow(panelZ - playerZ, 2));
   });
 
+  // Entity_Laser::update()
+  ptr = scanner.Scan(new SigScanTarget(2,
+    "89 87 ?? 00 00 00",  // mov [rdi + target], eax
+    "74 12"               // jmp 12
+  ));
+  if (ptr == IntPtr.Zero) {
+    throw new Exception("Could not find laser activation");
+  }
+  vars.myBeamId = game.ReadValue<int>(ptr);
+
   vars.log("-------------------"
     + "\nGlobals: " + globals.ToString("X")
     + "\nSolved offset: " + vars.solvedOffset.ToString("X")
@@ -442,6 +452,8 @@ init {
           } else if (mode == "audiologs") {
             vars.watchedAudiologs.Add(id);
             continue;
+          } else if (mode == "lasers") {
+            watcher = new MemoryWatcher<int>(vars.createPointer(id, vars.myBeamId));
           } else {
             vars.log("Encountered unknown mode: " + mode);
             continue;
