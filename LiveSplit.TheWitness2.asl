@@ -87,6 +87,7 @@ startup {
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config"));
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config.txt"));
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_conf"));
+      files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_confi"));
     }
     vars.log("Found " + files.Count + " config files");
 
