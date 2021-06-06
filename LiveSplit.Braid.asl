@@ -259,7 +259,7 @@ split {
   foreach (int piece in vars.currentPieces.Keys) {
     if (vars.collectedPieces[piece] == false) {
       if (vars.currentPieces[piece].Deref<bool>(game) == true) {
-        vars.log("Collected piece 0x"+piece.ToString("X")+" in level " + current.level);
+        vars.log("Collected piece 0x" + piece.ToString("X") + " in level " + current.level);
         vars.collectedPieces[piece] = true;
         // Collected a piece so the world is not complete yet
         vars.completedLevels[current.world + "-" + current.level] = false;

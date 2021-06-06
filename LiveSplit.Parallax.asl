@@ -9,6 +9,8 @@ state("Parallax") {
 startup {
   settings.Add("Split on chapter completion", true);
   settings.Add("Split on level completion", false);
+  settings.Add("deathcount", false, "Override first text component with a resets counter");
+
   vars.gameTime = null;
 
   //    | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
@@ -27,16 +29,30 @@ startup {
 
 init {
   vars.gameTime = null;
-
-  // 0x3e99999a (0.3f) = Paused
-  // 0x00000000 (0.0f) = End of level / score screen
-  // 0x3F800000 (1.0f) = Playing
   vars.fadeOut = null;
 
   foreach (var module in modules) {
     if (module.ModuleName.ToLower() == "mono.dll") {
+      // 0.3f (0x3E99999A) = Paused
+      // 0.0f (0x00000000) = End of level / score screen
+      // 1.0f (0x3F800000) = Playing
       vars.fadeOut = new MemoryWatcher<float>(new DeepPointer(module.BaseAddress + 0x1F20AC, 0xA8, 0xF8));
       break;
+    }
+  }
+
+  vars.deathCount = 0;
+  vars.updateText = false;
+  vars.tcs = null;
+  if (settings["deathcount"]) {
+    foreach (LiveSplit.UI.Components.IComponent component in timer.Layout.Components) {
+      if (component.GetType().Name == "TextComponent") {
+        vars.tc = component;
+        vars.tcs = vars.tc.Settings;
+        vars.updateText = true;
+        print("Found text component at " + component);
+        break;
+      }
     }
   }
 }
@@ -49,8 +65,8 @@ update {
   // gameTime hasn't been found yet, and we're in a valid level
   if (vars.gameTime == null && current.levelId > 2) {
     var scan = new SigScanTarget(5,
-      "D9 C9", // fxch st(1)
-      "DE C1", // faddp
+      "D9 C9",      // fxch st(1)
+      "DE C1",      // faddp
       "B8 ????????" // mov eax, [target]
     );
 
@@ -66,6 +82,11 @@ update {
 
   if (vars.gameTime != null) vars.gameTime.Update(game);
   vars.fadeOut.Update(game);
+
+  if (vars.updateText) {
+    vars.tcs.Text1 = "Resets:";
+    vars.tcs.Text2 = vars.deathCount.ToString();
+  }
 }
 
 isLoading {
@@ -95,7 +116,7 @@ reset {
 }
 
 split {
-  // Finished a level
+  // Finished a level (active -> menu)
   if (vars.fadeOut.Old == 1.0f && vars.fadeOut.Current == 0.0f) {
     string level = vars.levels[current.levelId];
     print("Completed level " + level);
@@ -107,5 +128,10 @@ split {
       if (settings["Split on chapter completion"]) return true;
     }
     if (settings["Split on level completion"]) return true;
+  }
+
+  // Reset a level (menu -> reload)
+  if (vars.fadeOut.Old == 0.3f && vars.fadeOut.Current == 0.0f) {
+    vars.deathCount++;
   }
 }
