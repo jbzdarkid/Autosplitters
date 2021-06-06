@@ -1,4 +1,7 @@
 state("witness64_d3d11") {}
+// Bugs:
+// Swamp floodgate control pictures are backwards
+
 // Broken (and won't fix?)
 // Town RGB blue is masked by red
 // Bunker floor 2 is masked by 5
