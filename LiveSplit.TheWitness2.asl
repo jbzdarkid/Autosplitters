@@ -1,7 +1,11 @@
 state("witness64_d3d11") {}
 // TODO: Challenge start does not have a good split story. Maybe go back to using the watcher?
 //  There's no real concern about this telling you even when you didn't get it, though this is mostly about 20CC, not AL -- if you don't start the challenge in AL, you'll know. Checking the splits isn't that big of a deal.
+
 // TODO: Solving any of triple (1) or triple (2) should award solves for the other panels. In case people fail & retry challenge.
+// TODO: Not correctly starting for click-to-move
+// TODO: Unsplit for snipe-cheat-prevention
+// TODO: Suggestion from Tzann (not really): Always start on first movement
 
 startup {
   // Relative to Livesplit.exe
@@ -74,6 +78,8 @@ startup {
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
   settings.Add("(Amerald Debugging)", false);
+  settings.Add("(ADGOD Performance)", false);
+  settings.Add("(ADGOD Performance 2)", false);
 
   vars.panelToString = (Func<int, string>)((int id) => {
     return "0x" + id.ToString("X").PadLeft(5, '0');
@@ -490,6 +496,10 @@ init {
 
 update {
   if (vars.panels == null) return false; // Init not yet done
+  if (settings["(ADGOD Performance 2)"]) {
+    TimeSpan realTime = (TimeSpan)timer.CurrentTime.RealTime;
+    if (realTime.Milliseconds % 3 != 0) return false;
+  }
 
   // Don't run if the game is loading. This is necessary to handle reloads
   vars.time.Update(game);
@@ -501,6 +511,8 @@ update {
   if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
   vars.playerMoving.Update(game);
   vars.interactMode.Update(game);
+  if (settings["(ADGOD Performance)"] && vars.puzzle.Current == 0) return false;
+
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
   vars.obeliskWatchers.UpdateAll(game);
