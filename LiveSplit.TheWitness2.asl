@@ -3,7 +3,6 @@ state("witness64_d3d11") {}
 //  There's no real concern about this telling you even when you didn't get it, though this is mostly about 20CC, not AL -- if you don't start the challenge in AL, you'll know. Checking the splits isn't that big of a deal.
 
 // TODO: Solving any of triple (1) or triple (2) should award solves for the other panels. In case people fail & retry challenge.
-// TODO: Not correctly starting for click-to-move
 // TODO: Suggestion from Tzann (not really): Always start on first movement
 
 startup {
@@ -327,6 +326,16 @@ init {
       Math.Pow(panelY - playerY, 2) +
       Math.Pow(panelZ - playerZ, 2));
   });
+  
+  vars.PlayerIsInStartingPosition = (Func<bool>) (() => {
+    var playerX = Math.Round(new DeepPointer(vars.playerPos + 0x00).Deref<float>(game), 3);
+    if (playerX != -201.449) return false;
+    var playerY = Math.Round(new DeepPointer(vars.playerPos + 0x04).Deref<float>(game), 3);
+    if (playerY != -114.798) return false;
+    var playerZ = Math.Round(new DeepPointer(vars.playerPos + 0x08).Deref<float>(game), 3);
+    if (playerZ != 3.727) return false;
+    return true;
+  });
 
   // Entity_Laser::update()
   ptr = scanner.Scan(new SigScanTarget(2,
@@ -337,6 +346,19 @@ init {
     throw new Exception("Could not find laser activation");
   }
   vars.myBeamId = game.ReadValue<int>(ptr);
+
+  // ???
+  ptr = scanner.Scan(new SigScanTarget(4,
+    "75 09",             // jne +09
+    "83 3D ???????? 01", // cmp dword ptr [target], 01
+    "75 6B"              // jne +0x6B
+  ));
+  if (ptr == IntPtr.Zero) {
+    vars.isClickToMove = null;
+  } else {
+    relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 5;
+    vars.isClickToMove = new DeepPointer(relativePosition + game.ReadValue<int>(ptr));
+  }
 
   vars.log("-------------------"
     + "\nGlobals: " + globals.ToString("X")
@@ -549,6 +571,7 @@ reset {
 start {
   if (settings["Only start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
+      vars.log("Starting the run due to challenge start");
       vars.gameIsRunning = true;
       vars.initPuzzles();
       return true;
@@ -557,6 +580,15 @@ start {
     // If "Only start on challenge start" is active, don't start for any other reason
     if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
       if (!vars.gameIsRunning) {
+        vars.log("Starting the run due to player movement");
+        vars.gameIsRunning = true;
+        vars.initPuzzles();
+        return true;
+      }
+    }
+    if (vars.isClickToMove != null && vars.isClickToMove.Deref<int>(game) == 1) {
+      if (!vars.PlayerIsInStartingPosition() && !vars.gameIsRunning) {
+        vars.log("Starting the run due to click-to-move");
         vars.gameIsRunning = true;
         vars.initPuzzles();
         return true;
@@ -565,6 +597,7 @@ start {
     // Mode 0 == solve, Mode 1 == panel, Mode 2 == walk, Mode 3 == flythrough
     if (vars.interactMode.Old == 2 && vars.interactMode.Current != 2) {
       if (!vars.gameIsRunning) {
+        vars.log("Starting the run due to the player entering solve mode");
         vars.gameIsRunning = true;
         vars.initPuzzles();
         return true;
