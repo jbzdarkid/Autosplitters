@@ -4,7 +4,6 @@ state("witness64_d3d11") {}
 
 // TODO: Solving any of triple (1) or triple (2) should award solves for the other panels. In case people fail & retry challenge.
 // TODO: Not correctly starting for click-to-move
-// TODO: Unsplit for snipe-cheat-prevention
 // TODO: Suggestion from Tzann (not really): Always start on first movement
 
 startup {
@@ -73,8 +72,9 @@ startup {
   settings.Add("Only start on challenge start", false);
   settings.Add("Reset on challenge stop", false);
   settings.Add("Split on eclipse environmental start", false);
-
   settings.Add("Split on easter egg ending", true);
+  settings.Add("Unsplit when restarting a long-distance puzzle", false);
+
   settings.Add("Override first text component with a Failed Panels count", false);
   settings.Add("Override first text component with a Completed Audio Logs count", false);
   settings.Add("(Amerald Debugging)", false);
@@ -585,6 +585,18 @@ split {
           vars.addPanel(panel, 1);
         } else {
           vars.addPanel(panel, 0);
+        }
+      } else if (settings["Unsplit when restarting a long-distance puzzle"]) {
+        if (vars.GetDistanceToPlayer(panel) > 27.0f) {
+          vars.log("Unsplitting for panel " + vars.panelToString(panel));
+          new TimerModel{CurrentState = timer}.UndoSplit();
+          // Also decrement the solve count, so that future solves will split
+          var puzzleData = vars.panels[panel];
+          vars.panels[panel] = new Tuple<int, int, DeepPointer>(
+            puzzleData.Item1 - 1, // Current solve count
+            puzzleData.Item2,     // Maximum solve count
+            puzzleData.Item3      // State pointer
+          );
         }
       }
     }
