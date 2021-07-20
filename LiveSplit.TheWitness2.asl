@@ -1,8 +1,7 @@
 state("witness64_d3d11") {}
-// TODO: Challenge start does not have a good split story. Maybe go back to using the watcher?
-//  There's no real concern about this telling you even when you didn't get it, though this is mostly about 20CC, not AL -- if you don't start the challenge in AL, you'll know. Checking the splits isn't that big of a deal.
-
-// TODO: Solving any of triple (1) or triple (2) should award solves for the other panels. In case people fail & retry challenge.
+// Rejected ideas:
+// Cleaning up challenge start split
+// Special handling for challenge triple (w.r.t. resolves)
 
 startup {
   // Relative to Livesplit.exe
