@@ -60,6 +60,11 @@ startup {
   };
   vars.startingPosition = new Tuple<double, double, double>(-201.449, -114.798, 3.727);
 
+  // If a puzzle is solved beyond a certain distance, report any state as success.
+  // Stairs snipe is ~10, Town redirect snipe is ~22, Desert surface 8 is solvable at ~25
+  // Town snipe is ~30, Quarry laser is ~32, Swamp snipe is ~45, Boathouse is ~70
+  vars.SNIPE_THRESHOLD = 27.0f;
+
   // Environmental puzzles/patterns, the +135. These are tracked via obelisks, which report their counts
   settings.Add("Split on environmental patterns", false);
   settings.Add("Split on audio logs", false);
@@ -312,7 +317,7 @@ init {
 
   relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
   vars.playerPos = relativePosition + game.ReadValue<int>(ptr);
-  vars.GetDistanceToPlayer = (Func<int, float>) ((int panel) => {
+  vars.PanelSolveIsSnipe = (Func<int, bool>) ((int panel) => {
     var panelX = vars.createPointer(panel, 0x24).Deref<float>(game);
     var panelY = vars.createPointer(panel, 0x28).Deref<float>(game);
     var panelZ = vars.createPointer(panel, 0x2C).Deref<float>(game);
@@ -320,10 +325,11 @@ init {
     var playerY = new DeepPointer(vars.playerPos + 0x04).Deref<float>(game);
     var playerZ = new DeepPointer(vars.playerPos + 0x08).Deref<float>(game);
 
-    return (float)Math.Sqrt(
-      Math.Pow(panelX - playerX, 2) +
-      Math.Pow(panelY - playerY, 2) +
-      Math.Pow(panelZ - playerZ, 2));
+    // A solve is considered a snipe at 27 units (729 = 27^2)
+    // Stairs snipe is ~10, Town redirect snipe is ~22, Desert surface 8 is solvable at ~25
+    // Town snipe is ~30, Quarry laser is ~32, Swamp snipe is ~45, Boathouse is ~70
+    var distanceToPlayer = Math.Pow(panelX - playerX, 2) + Math.Pow(panelY - playerY, 2) + Math.Pow(panelZ - playerZ, 2);
+    return distanceToPlayer > 729.0f;
   });
   
   vars.GetPlayerPosition = (Func<Tuple<double, double, double>>) (() => {
@@ -521,7 +527,16 @@ update {
 
   // Don't run if the game is loading. This is necessary to handle reloads
   vars.time.Update(game);
-  if (vars.time.Current <= vars.time.Old) return false;
+  if (vars.time.Current <= vars.time.Old || vars.time.Current - vars.time.Old > 10.0f) {
+    vars.log("(Re)loaded a save; updating watchers to avoid extra splits.");
+    // TODO: The original problem here had to do with *reloading* a save, not loading an old save.
+    // Maybe look up a more accurate "loading" trigger?
+    // I think the best solution here is to exit from the *bottom* of this block if we're still loading.
+    vars.obeliskWatchers.UpdateAll(game);
+    vars.watchers.UpdateAll(game);
+    return false;
+  }
+
 
   vars.gameFrames.Update(game);
   vars.puzzle.Update(game);
@@ -627,17 +642,20 @@ split {
         } else {
           vars.addPanel(panel, 0);
         }
-      } else if (settings["Unsplit when restarting a long-distance puzzle"]) {
-        if (vars.GetDistanceToPlayer(panel) > 27.0f) {
-          vars.log("Unsplitting for panel " + vars.panelToString(panel));
-          new TimerModel{CurrentState = timer}.UndoSplit();
-          // Also decrement the solve count, so that future solves will split
-          var puzzleData = vars.panels[panel];
-          vars.panels[panel] = new Tuple<int, int, DeepPointer>(
-            puzzleData.Item1 - 1, // Current solve count
-            puzzleData.Item2,     // Maximum solve count
-            puzzleData.Item3      // State pointer
-          );
+      } else {
+        var puzzleData = vars.panels[panel];
+        if (puzzleData.Item1 > 0 && vars.PanelSolveIsSnipe(panel)) {
+          vars.log("Player is sniping " + vars.panelToString(panel) + " for a second time");
+          if (settings["Unsplit when restarting a long-distance puzzle"]) {
+            vars.log("Unsplitting...");
+            new TimerModel{CurrentState = timer}.UndoSplit();
+            // Also decrement the solve count, so that future solves will split
+            vars.panels[panel] = new Tuple<int, int, DeepPointer>(
+              puzzleData.Item1 - 1, // Current solve count
+              puzzleData.Item2,     // Maximum solve count
+              puzzleData.Item3      // State pointer
+            );
+          }
         }
       }
     }
@@ -659,10 +677,9 @@ split {
       (vars.activePanel == 0x00815 && state == 3 && puzzleData.Item1 == 0) ||
       // Challenge start exits in state 3 sometimes
       (vars.activePanel == 0x0A332 && state == 3) ||
-      // If a puzzle is solved beyond a certain distance, report any state as success.
-      // Stairs snipe is ~10, Town redirect snipe is ~22, Desert surface 8 is solvable at ~25
-      // Town snipe is ~30, Quarry laser is ~32, Swamp snipe is ~45, Boathouse is ~70
-      (state != 0 && vars.GetDistanceToPlayer(panel) > 27.0f)
+      // If a puzzle is being sniped, report any state as success.
+      // This stops players from cheating by watching the splits to see if they got a snipe right.
+      (state != 0 && vars.PanelSolveIsSnipe(panel))
     ) {
       vars.panels[panel] = new Tuple<int, int, DeepPointer>(
         puzzleData.Item1 + 1, // Current solve count
