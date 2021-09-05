@@ -359,62 +359,6 @@ init {
     relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 5;
     vars.isClickToMove = new DeepPointer(relativePosition + game.ReadValue<int>(ptr));
   }
-  
-  // shut_main_menu
-  ptr = scanner.Scan(new SigScanTarget(7,
-    "48 83 EC 28",       // sub rsp, 28
-    "48 8D 0D ????????", // lea rcx, [target]
-    "E8 ????????",       // call delete_loadable_files
-    "48 83 C4 28"        // add rsp, 28
-  ));
-  if (ptr == IntPtr.Zero) throw new Exception("Could not find loadable_files");
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-  if (game.ReadValue<int>(ptr + 4) == 0) { // New version, where this is not just an Auto_Array
-    vars.loadableFiles = new MemoryWatcher<int>(new DeepPointer(
-      relativePosition + game.ReadValue<int>(ptr) + 0x10
-    ));
-  } else {
-    vars.loadableFiles = new MemoryWatcher<int>(new DeepPointer(
-      relativePosition + game.ReadValue<int>(ptr)
-    ));
-  }
-
-  // draw_loading_screen
-  ptr = scanner.Scan(new SigScanTarget(5,
-    "F2 0F1005 ????????", // movsd xmm0, [target]
-    "B9 02000000"          // mov ecx, 2
-  ));
-  if (ptr == IntPtr.Zero) throw new Exception("Could not find load_screen_time");
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-  vars.loadScreenTime = new MemoryWatcher<int>(new DeepPointer(
-    relativePosition + game.ReadValue<int>(ptr)
-  ));
-
-  // start_main_menu
-  ptr = scanner.Scan(new SigScanTarget(5,
-    "C6 05 ???????? 00",     // mov [menu_has_never_opened], 0
-    "C705 ???????? 0000803F" // mov [menu_open_t_target], 1.0f
-  ));
-  if (ptr == IntPtr.Zero) throw new Exception("Could not find menu open");
-  relativePosition = (int)((long)ptr - (long)page.BaseAddress) + 4;
-  vars.menuOpen = new DeepPointer(relativePosition + game.ReadValue<int>(ptr));
-  
-
-  /*
-
-  // ???
-  ptr = scanner.Scan(new SigScanTarget(2,
-    "FF 87 ????????",        // inc [rdi + target]
-    "66 C7 87 ???????? 0000" // mov [rdi + target2], 0000
-  ));
-  if (ptr == IntPtr.Zero) {
-    throw new Exception("Could not find loading");
-  }
-  
-  vars.loadCount = new MemoryWatcher<byte>(new DeepPointer(globals, game.ReadValue<int>(ptr)));
-  vars.isLoading = new MemoryWatcher<int>(new DeepPointer(globals, game.ReadValue<int>(ptr+7)));
-  vars.time = new MemoryWatcher<double>(new DeepPointer(globals, game.ReadValue<int>(ptr) + 0x10));
-  */
 
   vars.log("-------------------"
     + "\nGlobals: " + globals.ToString("X")
@@ -458,8 +402,6 @@ init {
   vars.initPuzzles = (Action)(() => {
     // Used for loading computations
     vars.runStart = vars.time.Current;
-    vars.menuTime = 0.0;
-    vars.lastTime = 0.0;
 
     // Used for actually splitting
     vars.activePanel = -1;
@@ -626,20 +568,7 @@ isLoading {
 }
 
 gameTime {
-  // Compute real-time delta since the last frame
-  var thisTime = ((TimeSpan)timer.CurrentTime.RealTime).Seconds;
-  var delta = thisTime - vars.lastTime;
-  vars.lastTime = thisTime;
-
-  // Consider counting realtime if the menu is open
-  if (vars.menuOpen.Deref<float>(game) == 1.0f) {
-    vars.loadableFiles.Update(game);
-    vars.loadScreenTime.Update(game);
-    // Loading the list of saves and loading a save game are not counted toward run time.
-    if (!vars.loadableFiles.Changed && !vars.isLoadingSaveList) vars.menuTime += delta;
-  }
-
-  return TimeSpan.FromSeconds(vars.time.Current - vars.runStart + vars.menuTime);
+  return TimeSpan.FromSeconds(vars.time.Current - vars.runStart);
 }
 
 reset {
