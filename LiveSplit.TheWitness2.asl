@@ -1,7 +1,7 @@
 state("witness64_d3d11") {}
 // Rejected ideas:
 // Cleaning up challenge start split
-// Special handling for challenge triple (w.r.t. resolves)
+// Special handling for challenge triple (w.r.t. re-solves)
 
 startup {
   // Relative to Livesplit.exe
@@ -85,15 +85,15 @@ startup {
   vars.configFiles = null;
   vars.settings = settings;
   var findConfigFiles = (Action<string>)((string folder) => {
-    vars.log("Searching for config files in " + folder);
     var files = new List<string>();
     if (folder != null) {
+      vars.log("Searching for config files in '" + folder + "'");
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config"));
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_config.txt"));
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_conf"));
       files.AddRange(System.IO.Directory.GetFiles(folder, "*.witness_confi"));
+      vars.log("Found " + files.Count + " config files");
     }
-    vars.log("Found " + files.Count + " config files");
 
     // Only add the parent setting the first time we call this function
     if (vars.configFiles == null) {
@@ -125,7 +125,6 @@ startup {
 init {
   vars.panels = null; // Used to detect if init completes properly
   vars.gameIsRunning = false;
-  vars.activePanel = -1;
   vars.playerPosition = null;
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
@@ -397,6 +396,14 @@ init {
   }
 
   vars.initPuzzles = (Action)(() => {
+    // Used for loading computations
+    vars.runStart = 0.0;
+    vars.menuTime = 0.0;
+    vars.lastTime = 0.0;
+    vars.isLoadingSaveList = false
+
+    // Used for actually splitting
+    vars.activePanel = -1;
     vars.activeAudioLog = 0;
     vars.hoveringOverAudioLog = null;
     vars.activelyPlayingAudioLog = null;
