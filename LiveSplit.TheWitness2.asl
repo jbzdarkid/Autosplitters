@@ -534,17 +534,16 @@ update {
   vars.playerMoving.Update(game);
   vars.interactMode.Update(game);
 
-  // Check for resets in update to account for manual resets.
-  // We determine that the game has been reset if the gameFrames drop to 0 *not* while we're loading a game.
-  if (vars.time.Current <= vars.time.Old && vars.gameFrames.Current == 0) vars.gameIsRunning = false;
-
-
   if (settings["(ADGOD Performance)"] && vars.puzzle.Current == 0) return false;
 
   vars.challengeActive.Update(game);
   vars.eyelidStart.Update(game);
   vars.obeliskWatchers.UpdateAll(game);
   vars.watchers.UpdateAll(game);
+
+  // If we are loading, don't proceed with any other blocks (especially split or reset).
+  // This fixes extra splits which occur while the game loads all the entities off another save.
+  if (!vars.time.Changed) return false;
 
   if (vars.updateText) {
     if (settings["Override first text component with a Failed Panels count"]) {
