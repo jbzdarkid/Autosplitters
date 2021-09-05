@@ -718,7 +718,8 @@ split {
         }
       } else {
         var puzzleData = vars.panels[panel];
-        if (puzzleData.Item1 > 0 && vars.PanelSolveIsSnipe(panel)) {
+        // Only consider the puzzle if it has already been solved *and* if solving it again would result in a split
+        if (puzzleData.Item1 > 0 && puzzleData.Item1 - 1 < puzzleData.Item2 && vars.PanelSolveIsSnipe(panel)) {
           vars.log("Player is sniping " + vars.panelToString(panel) + " for a second time");
           if (settings["Unsplit when restarting a long-distance puzzle"]) {
             vars.log("Unsplitting...");
