@@ -1,7 +1,8 @@
 state("witness64_d3d11") {}
 // Improvements:
-// It seems like starting a new game doesn't always reset the timer properly...
-// sometimes it decides to check for player position at an inopportune moment.
+// - It seems like starting a new game doesn't always reset the timer properly...
+//   sometimes it decides to check for player position at an inopportune moment.
+//   Looks like this is in some way due to "always start on movement", so a fix should target that.
 
 // Rejected ideas:
 // Cleaning up challenge start split
@@ -545,6 +546,10 @@ update {
   // This fixes extra splits which occur while the game loads all the entities off another save.
   if (!vars.time.Changed) return false;
 
+  // Check for resets by seeing the game's frame counter drops to zero.
+  // This is handled in update rather than reset to account for manual resets
+  if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
+
   if (vars.updateText) {
     if (settings["Override first text component with a Failed Panels count"]) {
       vars.tcs.Text1 = "Failed Panels:";
@@ -571,9 +576,9 @@ gameTime {
 }
 
 reset {
-  if (vars.gameFrames.Old != 0 && vars.gameFrames.Current == 0) {
-    return true;
-  }
+  // Reset triggered by the update block
+  if (!vars.gameIsRunning) return true;
+
   if (settings["Reset on challenge stop"]) {
     if (vars.challengeActive.Old == 1.0 && vars.challengeActive.Current == 0.0) {
       return true;
