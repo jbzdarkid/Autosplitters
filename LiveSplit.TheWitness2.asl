@@ -637,43 +637,47 @@ start {
 }
 
 split {
-  if (vars.puzzle.Old == 0 && vars.puzzle.Current != 0) {
+  // First, check to see if we've started a puzzle
+  if (vars.activePanel == -1 && vars.puzzle.Current != 0) {
     int panel = vars.puzzle.Current - 1;
-    if (vars.allPanels.Contains(panel)) { // Only set activePanel if it's actually a panel.
-      vars.activePanel = panel;
-      vars.log("Started panel " + vars.panelToString(panel));
-      if (!vars.panels.ContainsKey(panel)) {
+    vars.activePanel = panel;
+    
+    // If it's a valid panel ID, then consider adding it to the panel tracking dictionary
+    if (vars.allPanels.Contains(panel)) {
+      if (vars.panels.ContainsKey(panel)) {
+        vars.log("Encountered known panel " + vars.panelToString(panel));
+      } else {
         vars.log("Encountered new panel " + vars.panelToString(panel));
         if (settings["Split on all panels (solving and non-solving)"]) {
           vars.addPanel(panel, 1);
         } else {
           vars.addPanel(panel, 0);
         }
-      } else {
+      }
+      
+      if (settings["Unsplit when restarting a long-distance puzzle"] && vars.panels.ContainsKey(panel)) {
         var puzzleData = vars.panels[panel];
         // Only consider the puzzle if it has already been solved *and* if solving it again would result in a split
         if (puzzleData.Item1 > 0 && puzzleData.Item1 - 1 < puzzleData.Item2 && vars.PanelSolveIsSnipe(panel)) {
-          vars.log("Player is sniping " + vars.panelToString(panel) + " for a second time");
-          if (settings["Unsplit when restarting a long-distance puzzle"]) {
-            vars.log("Unsplitting...");
-            new TimerModel{CurrentState = timer}.UndoSplit();
-            // Also decrement the solve count, so that future solves will split
-            vars.panels[panel] = new Tuple<int, int, DeepPointer>(
-              puzzleData.Item1 - 1, // Current solve count
-              puzzleData.Item2,     // Maximum solve count
-              puzzleData.Item3      // State pointer
-            );
-          }
+          vars.log("Player is sniping " + vars.panelToString(panel) + " for a second time, unsplitting");
+          new TimerModel{CurrentState = timer}.UndoSplit();
+          // Also decrement the solve count, so that future solves will split
+          vars.panels[panel] = new Tuple<int, int, DeepPointer>(
+            puzzleData.Item1 - 1, // Current solve count
+            puzzleData.Item2,     // Maximum solve count
+            puzzleData.Item3      // State pointer
+          );
         }
       }
     }
   }
 
+  // Then, check to see if the active panel is being tracked and has been solved.
   if (vars.activePanel != -1 && vars.panels.ContainsKey(vars.activePanel)) {
     int panel = vars.activePanel;
     var puzzleData = vars.panels[panel];
     int state = puzzleData.Item3.Deref<int>(game);
-    // Valid states:
+    // States:
     // 0: Unsolved
     // 1: Solved correctly
     // 2: Solved incorrectly
@@ -706,6 +710,7 @@ split {
     }
   }
 
+  // Check for splits based on configuration file (as well as certain panels)
   foreach (var watcher in vars.watchers) {
     // N.B. doors go from 0 to 0.blah so this isn't exactly 0 -> 1
     if (watcher.Old == 0 && watcher.Current > 0) {
@@ -714,6 +719,7 @@ split {
     }
   }
 
+  // Check for splits based on audio logs
   if (settings["Split on audio logs"] || vars.watchedAudiologs.Count > 0
    || settings["Override first text component with a Completed Audio Logs count"]) {
     vars.audioLog.Update(game);
@@ -756,6 +762,7 @@ split {
     }
   }
 
+  // Better-performing block for splitting when we track ALL eps, since this is just 6 watchers
   if (settings["Split on environmental patterns"]) {
     int epCount = 0;
     foreach (var watcher in vars.obeliskWatchers) epCount += watcher.Current;
