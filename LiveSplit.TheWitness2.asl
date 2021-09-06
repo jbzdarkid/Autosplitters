@@ -671,7 +671,7 @@ split {
       }
     }
   }
-
+  
   // Then, check to see if the active panel is being tracked and has been solved.
   if (vars.activePanel != -1 && vars.panels.ContainsKey(vars.activePanel)) {
     int panel = vars.activePanel;
@@ -709,6 +709,9 @@ split {
       if (state == 2 || state == 3) vars.deathCount++;
     }
   }
+ 
+  // If we've exited the panel, reset activePanel. Backup case for non-tracked panels
+  if (vars.activePanel != -1 && vars.puzzle.Current == 0) vars.activePanel = -1;
 
   // Check for splits based on configuration file (as well as certain panels)
   foreach (var watcher in vars.watchers) {
