@@ -57,6 +57,17 @@ startup {
   settings.SetToolTip("full_ending64", "Exiting Gomez's house after 64-cube ending");
 
   settings.CurrentDefaultParent = null;
+  settings.Add("artifactSplits", false, "Artifact% Splits (use with any% splits except Zu)");
+  settings.CurrentDefaultParent = "artifactSplits";
+
+  settings.Add("artifact_zu", false, "Zu");
+  settings.SetToolTip("artifact_zu", "Entering Zu City Ruins from Zu Library");
+  settings.Add("artifact_graveyard", false, "Graveyard");
+  settings.SetToolTip("artifact_graveyard", "Entering Graveyard Gate from Graveyard Treasure");
+  settings.Add("artifact_lighthouse", false, "Lighthouse");
+  settings.SetToolTip("artifact_lighthouse", "Entering Memory Core from Nature Hub");
+
+  settings.CurrentDefaultParent = null;
   settings.Add("deathcount", false, "Override first text component with a Fall Counter");
 }
 
@@ -208,6 +219,12 @@ split {
         return settings["full_industrialWrapUp"];
       } else if (oldLevel == "GRAVEYARD_GATE" && newLevel == "NATURE_HUB") {
         return settings["full_graveyard"];
+      } else if (oldLevel == "ZU_LIBRARY" && newLevel == "ZU_CITY_RUINS") {
+        return settings["artifact_zu"];
+      } else if (oldLevel == "GRAVE_TREASURE_A" && newLevel == "GRAVEYARD_GATE") {
+        return settings["artifact_graveyard"];
+      } else if (oldLevel == "NATURE_HUB" && newLevel == "MEMORY_CORE") {
+        return settings["artifact_lighthouse"];
       }
     }
   }
