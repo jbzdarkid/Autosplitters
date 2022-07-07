@@ -12,6 +12,8 @@ startup {
   settings.SetToolTip("bellTower", "Entering Nature Hub from Two Walls shortcut door");
   settings.Add("waterfall", false, "Waterfall");
   settings.SetToolTip("waterfall", "Warping to Nature Hub from CMY B");
+  settings.Add("waterfall_new", false, "Waterfall (new)");
+  settings.SetToolTip("waterfall", "Warping to Nature Hub from Zu Code Loop");
   settings.Add("arch", false, "Arch");
   settings.SetToolTip("arch", "Warping to Nature Hub from Five Towers");
   settings.Add("tree", false, "Tree");
@@ -199,6 +201,8 @@ split {
         return settings["full_ending64"];
       } else if (oldLevel == "CMY_B" && newLevel == "NATURE_HUB") {
         return settings["waterfall"] || settings["full_waterfall"];
+      } else if (oldLevel == "ZU_CODE_LOOP" && newLevel == "NATURE_HUB") {
+        return settings["waterfall_new"];
       } else if (oldLevel == "FIVE_TOWERS" && newLevel == "NATURE_HUB") {
         return settings["arch"];
       } else if (oldLevel == "QUANTUM" && newLevel == "NATURE_HUB") {
