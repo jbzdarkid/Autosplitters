@@ -131,6 +131,7 @@ init {
   vars.panels = null; // Used to detect if init completes properly
   vars.gameIsRunning = false;
   vars.playerPosition = null;
+  vars.shouldReset = false;
   var page = modules.First();
   var scanner = new SignatureScanner(game, page.BaseAddress, page.ModuleMemorySize);
 
@@ -548,7 +549,11 @@ update {
 
   // Check for resets by seeing the game's frame counter drops to zero.
   // This is handled in update rather than reset to account for manual resets
-  if (vars.gameFrames.Current == 0) vars.gameIsRunning = false;
+  if (vars.gameFrames.Current == 0) {
+    vars.shouldReset = true;
+    vars.gameIsRunning = false;
+    vars.log("Detected new game, resetting");
+  }
 
   if (vars.updateText) {
     if (settings["Override first text component with a Failed Panels count"]) {
@@ -576,8 +581,11 @@ gameTime {
 }
 
 reset {
-  // Reset triggered by the update block
-  if (!vars.gameIsRunning) return true;
+  // The update block detected that a new game has started... why do we check here?
+  if (vars.shouldReset) {
+    vars.shouldReset = false;
+    return true;
+  }
 
   if (settings["Reset on challenge stop"]) {
     if (vars.challengeActive.Old == 1.0 && vars.challengeActive.Current == 0.0) {
