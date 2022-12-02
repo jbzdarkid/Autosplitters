@@ -550,7 +550,7 @@ update {
 
   // Check for resets by seeing the game's frame counter drops to zero.
   // This is handled in update rather than reset to account for manual resets
-  if (vars.gameFrames.Current == 0) {
+  if (vars.gameFrames.Current == 0 && vars.gameIsRunning) {
     vars.shouldReset = true;
     vars.gameIsRunning = false;
     vars.log("Detected new game, resetting");
