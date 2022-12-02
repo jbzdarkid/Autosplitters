@@ -3,6 +3,7 @@ state("witness64_d3d11") {}
 // - It seems like starting a new game doesn't always reset the timer properly...
 //   sometimes it decides to check for player position at an inopportune moment.
 //   Looks like this is in some way due to "always start on movement", so a fix should target that.
+// - Some indication that there are two config files with the same name?
 
 // Rejected ideas:
 // Cleaning up challenge start split
@@ -595,52 +596,49 @@ reset {
 }
 
 start {
+  bool shouldStart = false;
   if (settings["Only start on challenge start"]) {
     if (vars.challengeActive.Old == 0.0 && vars.challengeActive.Current == 1.0) {
       vars.log("Starting the run due to challenge start");
-      vars.gameIsRunning = true;
-      vars.initPuzzles();
-      return true;
+      shouldStart = true;
     }
   } else {
     // If "Only start on challenge start" is active, don't start for any other reason
     if (vars.playerMoving.Old == 0 && vars.playerMoving.Current == 1) {
       if (!vars.gameIsRunning) {
         vars.log("Starting the run due to player movement");
-        vars.gameIsRunning = true;
-        vars.initPuzzles();
-        return true;
+        shouldStart = true;
       }
     }
     if (vars.isClickToMove != null && vars.isClickToMove.Deref<int>(game) == 1) {
       if (!vars.gameIsRunning && !vars.startingPosition.Equals(vars.GetPlayerPosition())) {
         vars.log("Starting the run due to click-to-move");
-        vars.gameIsRunning = true;
-        vars.initPuzzles();
-        return true;
+        shouldStart = true;
       }
     }
     // Mode 0 == solve, Mode 1 == panel, Mode 2 == walk, Mode 3 == flythrough
     if (vars.interactMode.Old == 2 && vars.interactMode.Current != 2) {
       if (!vars.gameIsRunning) {
         vars.log("Starting the run due to the player entering solve mode");
-        vars.gameIsRunning = true;
-        vars.initPuzzles();
-        return true;
+        shouldStart = true;
       }
     }
     if (settings["Always start the splits on movement"]) {
       var newPosition = vars.GetPlayerPosition();
       if (vars.playerPosition != null && !vars.playerPosition.Equals(newPosition)) {
         vars.log("Starting the run due to any player movement");
+        shouldStart = true;
         vars.playerPosition = null;
-        vars.gameIsRunning = true;
-        vars.initPuzzles();
-        return true;
       } else {
         vars.playerPosition = newPosition;
       }
     }
+  }
+  
+  if (shouldStart) {
+    vars.gameIsRunning = true;
+    vars.initPuzzles();
+    return true;
   }
 }
 
