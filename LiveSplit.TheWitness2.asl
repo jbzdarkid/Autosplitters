@@ -332,7 +332,7 @@ init {
     var distanceToPlayer = Math.Pow(panelX - playerX, 2) + Math.Pow(panelY - playerY, 2) + Math.Pow(panelZ - playerZ, 2);
     return distanceToPlayer > 729.0f;
   });
-  
+
   vars.GetPlayerPosition = (Func<Tuple<double, double, double>>) (() => {
     double playerX = Math.Round(new DeepPointer(vars.playerPos + 0x00).Deref<float>(game), 3);
     double playerY = Math.Round(new DeepPointer(vars.playerPos + 0x04).Deref<float>(game), 3);
@@ -634,9 +634,10 @@ start {
       }
     }
   }
-  
+
   if (shouldStart) {
     vars.gameIsRunning = true;
+    vars.shouldReset = false;
     vars.initPuzzles();
     return true;
   }
@@ -647,7 +648,7 @@ split {
   if (vars.activePanel == -1 && vars.puzzle.Current != 0) {
     int panel = vars.puzzle.Current - 1;
     vars.activePanel = panel;
-    
+
     // If it's a valid panel ID, then consider adding it to the panel tracking dictionary
     if (vars.allPanels.Contains(panel)) {
       if (vars.panels.ContainsKey(panel)) {
@@ -660,7 +661,7 @@ split {
           vars.addPanel(panel, 0);
         }
       }
-      
+
       if (settings["Unsplit when restarting a long-distance puzzle"] && vars.panels.ContainsKey(panel)) {
         var puzzleData = vars.panels[panel];
         // Only consider the puzzle if it has already been solved *and* if solving it again would result in a split
@@ -677,7 +678,7 @@ split {
       }
     }
   }
-  
+
   // Then, check to see if the active panel is being tracked and has been solved.
   if (vars.activePanel != -1 && vars.panels.ContainsKey(vars.activePanel)) {
     int panel = vars.activePanel;
@@ -715,7 +716,7 @@ split {
       if (state == 2 || state == 3) vars.deathCount++;
     }
   }
- 
+
   // If we've exited the panel, reset activePanel. Backup case for non-tracked panels
   if (vars.activePanel != -1 && vars.puzzle.Current == 0) vars.activePanel = -1;
 
