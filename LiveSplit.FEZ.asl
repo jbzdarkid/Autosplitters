@@ -2,7 +2,7 @@ state("FEZ") {}
 
 startup {
   settings.Add("all_levels", false, "Split when changing levels");
-  
+
   settings.Add("anySplits", true, "Any% Splits");
   settings.CurrentDefaultParent = "anySplits";
 
@@ -24,6 +24,39 @@ startup {
   settings.SetToolTip("ending32", "Exiting Gomez's house after 32-cube ending");
 
   settings.CurrentDefaultParent = null;
+  settings.Add("fullCompletionSplits", false, "Full Completion Splits (Juikuen's route)");
+  settings.CurrentDefaultParent = "fullCompletionSplits";
+
+  settings.Add("full_village", false, "Village");
+  settings.SetToolTip("full_village", "Entering Nature Hub from Memory Core");
+  settings.Add("full_waterfall", false, "Waterfall");
+  settings.SetToolTip("full_waterfall", "Warping to Nature Hub from CMY B");
+  settings.Add("full_bellTower", false, "Bell Tower");
+  settings.SetToolTip("full_bellTower", "Entering Nature Hub from Two Walls shortcut door");
+  settings.Add("full_mine", false, "Mine");
+  settings.SetToolTip("full_mine", "Warping to Nature Hub from Mine Wrap");
+  settings.Add("full_tree", false, "Tree");
+  settings.SetToolTip("full_tree", "Entering Zu City Ruins from Zu Bridge");
+  settings.Add("full_zu", false, "Zu");
+  settings.SetToolTip("full_zu", "Warping to Nature Hub from Zu City Ruins");
+  settings.Add("full_arch", false, "Arch");
+  settings.SetToolTip("full_arch", "Warping to Nature Hub from Quantum");
+  settings.Add("full_lighthouse", false, "Lighthouse");
+  settings.SetToolTip("full_lighthouse", "Entering Memory Core from Pivot Watertower shortcut door");
+  settings.Add("full_cubeDoors", false, "Cube Doors");
+  settings.SetToolTip("full_cubeDoors", "Entering Industrial Hub from Pivot Watertower");
+  settings.Add("full_industrial", false, "Industrial");
+  settings.SetToolTip("full_industrial", "Entering Sewer Start from Well 2");
+  settings.Add("full_sewers", false, "Sewers");
+  settings.SetToolTip("full_sewers", "Entering Nuzu Abandoned B from Sewer To Lava");
+  settings.Add("full_industrialWrapUp", false, "Industrial Wrap-up");
+  settings.SetToolTip("full_industrialWrapUp", "Warping to Nature Hub from Industrial Hub");
+  settings.Add("full_graveyard", false, "Graveyard");
+  settings.SetToolTip("full_graveyard", "Warping to Nature Hub from Graveyard Gate");
+  settings.Add("full_ending64", false, "Ending (64)");
+  settings.SetToolTip("full_ending64", "Exiting Gomez's house after 64-cube ending");
+
+  settings.CurrentDefaultParent = null;
   settings.Add("deathcount", false, "Override first text component with a Fall Counter");
 }
 
@@ -42,7 +75,7 @@ init {
     if (ptr != IntPtr.Zero) {
       fezGame = (int)ptr - (int)modules.First().BaseAddress - 0x53;
     }
-    
+
     // FezGame.Speedrun::Draw
     ptr = scanner.Scan(new SigScanTarget(6,
       "33 C0",               // xor eax,eax
@@ -65,17 +98,17 @@ init {
     print("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
     print("Found timerBase at 0x" + timerBase.ToString("X"));
   }
-  
+
   vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
   vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
   vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
   vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
-  
+
   vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
   vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
   vars.gameTime = 0;
   vars.runStarting = false;
-  
+
   vars.watchers = new MemoryWatcherList() {
     vars.speedrunIsLive,
     vars.timerElapsed,
@@ -84,7 +117,7 @@ init {
     vars.gomezAction,
     vars.levelWatcher,
   };
-  
+
   vars.deathCount = 0;
   vars.updateText = false;
   vars.tcs = null;
@@ -142,21 +175,39 @@ split {
         return true;
       }
       if (oldLevel == "MEMORY_CORE" && newLevel == "NATURE_HUB") {
-        return settings["village"];
+        return settings["village"] || settings["full_village"];
       } else if (oldLevel == "TWO_WALLS" && newLevel == "NATURE_HUB") {
-        return settings["bellTower"];
+        return settings["bellTower"] || settings["full_bellTower"];
       } else if (oldLevel == "PIVOT_WATERTOWER" && newLevel == "MEMORY_CORE") {
-        return settings["lighthouse"];
+        return settings["lighthouse"] || settings["full_lighthouse"];
       } else if (oldLevel == "ZU_BRIDGE" && newLevel == "ZU_CITY_RUINS") {
-        return settings["tree"];
+        return settings["tree"] || settings["full_tree"];
       } else if (oldLevel == "GOMEZ_HOUSE_END_32" && newLevel == "VILLAGEVILLE_3D_END_32") {
         return settings["ending32"];
+      } else if (oldLevel == "GOMEZ_HOUSE_END_64" && newLevel == "VILLAGEVILLE_3D_END_64") {
+        return settings["full_ending64"];
       } else if (oldLevel == "CMY_B" && newLevel == "NATURE_HUB") {
-        return settings["waterfall"];
+        return settings["waterfall"] || settings["full_waterfall"];
       } else if (oldLevel == "FIVE_TOWERS" && newLevel == "NATURE_HUB") {
         return settings["arch"];
+      } else if (oldLevel == "QUANTUM" && newLevel == "NATURE_HUB") {
+        return settings["full_arch"];
       } else if (oldLevel == "VISITOR" && newLevel == "ZU_CITY_RUINS") {
         return settings["zu"];
+      } else if (oldLevel == "ZU_CITY_RUINS" && newLevel == "NATURE_HUB") {
+        return settings["full_zu"];
+      } else if (oldLevel == "MINE_WRAP" && newLevel == "NATURE_HUB") {
+        return settings["full_mine"];
+      } else if (oldLevel == "PIVOT_WATERTOWER" && newLevel == "INDUSTRIAL_HUB") {
+        return settings["full_cubeDoors"];
+      } else if (oldLevel == "WELL_2" && newLevel == "SEWER_START") {
+        return settings["full_industrial"];
+      } else if (oldLevel == "SEWER_TO_LAVA" && newLevel == "NUZU_ABANDONED_B") {
+        return settings["full_sewers"];
+      } else if (oldLevel == "INDUSTRIAL_HUB" && newLevel == "NATURE_HUB") {
+        return settings["full_industrialWrapUp"];
+      } else if (oldLevel == "GRAVEYARD_GATE" && newLevel == "NATURE_HUB") {
+        return settings["full_graveyard"];
       }
     }
   }
