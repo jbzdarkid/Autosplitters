@@ -50,12 +50,14 @@ init {
   foreach (var page in game.MemoryPages()) {
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-    ptr = scanner.Scan(new SigScanTarget(0,
-      "01 01 00 00 00 40 0D 03"
+    // FezGame.Program::MainInternal
+    ptr = scanner.Scan(new SigScanTarget(36,
+      "38 00", // cmp byte ptr [eax], al
+      "8B C8", // mov ecx, eax
+      "BA 03 00 00 00" // mov edx, 3 ; ThreadPriority.AboveNormal
     ));
-    if (ptr != IntPtr.Zero) {
-      fezGame = (int)ptr - (int)modules.First().BaseAddress - 0x53;
-    }
+    if (ptr != IntPtr.Zero) fezGame = game.ReadValue<int>(ptr) - (int)modules.First().BaseAddress;
+
     // FezGame.Speedrun::Draw
     ptr = scanner.Scan(new SigScanTarget(6,
       "33 C0",               // xor eax,eax
@@ -64,26 +66,37 @@ init {
     ));
     if (ptr != IntPtr.Zero) {
       speedrunIsLive = game.ReadValue<int>(ptr) - (int)modules.First().BaseAddress;
-      timerBase = game.ReadValue<int>(ptr + 0xD) - (int)modules.First().BaseAddress;
+      timerBase = game.ReadValue<int>(ptr + 13) - (int)modules.First().BaseAddress;
     }
+
+    if (fezGame != 0 && speedrunIsLive != 0 && timerBase != 0) break;
   }
   if (fezGame == 0) {
-    throw new Exception("Couldn't find FezGame!");
-  } else {
-    vars.log("Found FezGame at 0x" + fezGame.ToString("X"));
-  }
-  if (speedrunIsLive == 0 || timerBase == 0) {
+    vars.log("Couldn't find FezGame.fez!");
+    throw new Exception("Couldn't find FezGame.fez!");
+  } else if (speedrunIsLive == 0 || timerBase == 0) {
+    vars.log("Couldn't find speedrunIsLive / timerBase!");
     throw new Exception("Couldn't find speedrunIsLive / timerBase!");
-  } else {
-    vars.log("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
-    vars.log("Found timerBase at 0x" + timerBase.ToString("X"));
   }
+
+  vars.log("Found FezGame at 0x" + fezGame.ToString("X"));
+  vars.log("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
+  vars.log("Found timerBase at 0x" + timerBase.ToString("X"));
+  vars.log("Found all sigscans, ready for start of run");
+
+  // FezGame.SpeedRun.Began
   vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
+  // FezGame.Speedrun.Timer.elapsed
   vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
+  // FezGame.Speedrun.Timer.startTimeStamp
   vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
+  // FezGame.Speedrun.Timer.isRunning
   vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
-  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
-  vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
+  // FezGame.Program.fez.GameState.PlayerManager.action
+  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x78, 0x88, 0x70));
+  // FezGame.Program.fez.GameState.SaveData.Level
+  vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x78, 0x60, 0x14, 0x8), 100);
+  
   vars.gameTime = 0;
   vars.runStarting = false;
   vars.watchers = new MemoryWatcherList() {
@@ -174,6 +187,7 @@ split {
     }
   }
   if (vars.gomezAction.Changed) {
+    // ActionType.FreeFalling
     if (vars.gomezAction.Current == 0x25) {
       vars.deathCount++;
     }
