@@ -1,8 +1,20 @@
 state("FEZ") {}
 
 startup {
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_fez.log";
+  vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  try {
+    vars.log("Autosplitter loaded");
+  } catch (System.IO.FileNotFoundException e) {
+    System.IO.File.Create(vars.logFilePath);
+    vars.log("Autosplitter loaded, log file created");
+  }
+
   settings.Add("all_levels", false, "Split when changing levels");
-  
   settings.Add("anySplits", true, "Any% Splits");
   settings.CurrentDefaultParent = "anySplits";
 
@@ -12,6 +24,8 @@ startup {
   settings.SetToolTip("bellTower", "Entering Nature Hub from Two Walls shortcut door");
   settings.Add("waterfall", false, "Waterfall");
   settings.SetToolTip("waterfall", "Warping to Nature Hub from CMY B");
+  settings.Add("waterfall2", false, "Waterfall (8bac route)");
+  settings.SetToolTip("waterfall2", "Warping to Nature Hub from Infinite Fall");
   settings.Add("arch", false, "Arch");
   settings.SetToolTip("arch", "Warping to Nature Hub from Five Towers");
   settings.Add("tree", false, "Tree");
@@ -28,7 +42,7 @@ startup {
 }
 
 init {
-  print("Running signature scans...");
+  vars.log("Running signature scans...");
   int fezGame = 0;
   int speedrunIsLive = 0;
   int timerBase = 0;
@@ -42,7 +56,6 @@ init {
     if (ptr != IntPtr.Zero) {
       fezGame = (int)ptr - (int)modules.First().BaseAddress - 0x53;
     }
-    
     // FezGame.Speedrun::Draw
     ptr = scanner.Scan(new SigScanTarget(6,
       "33 C0",               // xor eax,eax
@@ -57,25 +70,22 @@ init {
   if (fezGame == 0) {
     throw new Exception("Couldn't find FezGame!");
   } else {
-    print("Found FezGame at 0x" + fezGame.ToString("X"));
+    vars.log("Found FezGame at 0x" + fezGame.ToString("X"));
   }
   if (speedrunIsLive == 0 || timerBase == 0) {
     throw new Exception("Couldn't find speedrunIsLive / timerBase!");
   } else {
-    print("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
-    print("Found timerBase at 0x" + timerBase.ToString("X"));
+    vars.log("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
+    vars.log("Found timerBase at 0x" + timerBase.ToString("X"));
   }
-  
   vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
   vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
   vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
   vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
-  
   vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame + 0x7C, 0x88, 0x70));
   vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame + 0x7C, 0x38, 0x4, 0x8), 100);
   vars.gameTime = 0;
   vars.runStarting = false;
-  
   vars.watchers = new MemoryWatcherList() {
     vars.speedrunIsLive,
     vars.timerElapsed,
@@ -84,7 +94,6 @@ init {
     vars.gomezAction,
     vars.levelWatcher,
   };
-  
   vars.deathCount = 0;
   vars.updateText = false;
   vars.tcs = null;
@@ -94,7 +103,7 @@ init {
         vars.tc = component;
         vars.tcs = vars.tc.Settings;
         vars.updateText = true;
-        print("Found text component at " + component);
+        vars.log("Found text component at " + component);
         break;
       }
     }
@@ -112,10 +121,11 @@ update {
 
 start {
   if (!vars.speedrunIsLive.Old && vars.speedrunIsLive.Current) {
+    vars.log("Speedrun starting");
     vars.runStarting = true;
   }
   if (vars.runStarting && vars.timerEnabled.Current) {
-    print("Starting run");
+    vars.log("Starting run");
     vars.deathCount = 0;
     vars.gameTime = 0;
     vars.level = "GOMEZ_HOUSE_2D";
@@ -126,7 +136,7 @@ start {
 
 reset {
   if (vars.speedrunIsLive.Old && !vars.speedrunIsLive.Current) {
-    print("Reset run");
+    vars.log("Reset run");
     return true;
   }
 }
@@ -135,8 +145,9 @@ split {
   if (vars.levelWatcher.Changed) {
     string oldLevel = vars.level;
     string newLevel = vars.levelWatcher.Current;
+    vars.log("Changed level from " + oldLevel + " to " + newLevel);
     if (vars.levels.Contains(newLevel) && oldLevel != newLevel) {
-      print("Changed level from " + oldLevel + " to " + newLevel);
+      vars.log("New level is an actual level name: " + newLevel);
       vars.level = newLevel;
       if (settings["all_levels"]) {
         return true;
@@ -153,6 +164,8 @@ split {
         return settings["ending32"];
       } else if (oldLevel == "CMY_B" && newLevel == "NATURE_HUB") {
         return settings["waterfall"];
+      } else if (oldLevel == "ZU_CODE_LOOP" && newLevel == "NATURE_HUB") {
+        return settings["waterfall2"];
       } else if (oldLevel == "FIVE_TOWERS" && newLevel == "NATURE_HUB") {
         return settings["arch"];
       } else if (oldLevel == "VISITOR" && newLevel == "ZU_CITY_RUINS") {
@@ -178,8 +191,8 @@ gameTime {
     // 10,000,000: Number of ticks in a second
     var newGameTime = elapsedTicks * 10000000 / Stopwatch.Frequency;
     if (Math.Abs(newGameTime - vars.gameTime) > 10000000) { // Time jump by > 1s
-      print("Gametime jumped by >1s, waiting for a more stable value.");
-      print("Old gametime: " + vars.gameTime + " New gametime: " + newGameTime);
+      vars.log("Gametime jumped by >1s, waiting for a more stable value.");
+      vars.log("Old gametime: " + vars.gameTime + " New gametime: " + newGameTime);
     } else {
       vars.gameTime = newGameTime;
     }
