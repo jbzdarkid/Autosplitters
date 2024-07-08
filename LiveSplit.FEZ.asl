@@ -14,28 +14,70 @@ startup {
     vars.log("Autosplitter loaded, log file created");
   }
 
+  vars.levels = new HashSet<string> {"ABANDONED_A", "ABANDONED_B", "ABANDONED_C", "ANCIENT_WALLS", "ARCH", "BELL_TOWER", "BIG_OWL", "BIG_TOWER", "BOILEROOM", "CABIN_INTERIOR_A", "CABIN_INTERIOR_B", "CLOCK", "CMY", "CMY_B", "CMY_FORK", "CODE_MACHINE", "CRYPT", "DRUM", "ELDERS", "EXTRACTOR_A", "FIVE_TOWERS", "FIVE_TOWERS_CAVE", "FOX", "FRACTAL", "GEEZER_HOUSE", "GEEZER_HOUSE_2D", "GLOBE", "GLOBE_INT", "GOMEZ_HOUSE", "GOMEZ_HOUSE_2D", "GOMEZ_HOUSE_END_32", "GOMEZ_HOUSE_END_64", "GRAVE_CABIN", "GRAVE_GHOST", "GRAVE_LESSER_GATE", "GRAVE_TREASURE_A", "GRAVEYARD_A", "GRAVEYARD_GATE", "HEX_REBUILD", "INDUST_ABANDONED_A", "INDUSTRIAL_CITY", "INDUSTRIAL_HUB", "INDUSTRIAL_SUPERSPIN", "KITCHEN", "KITCHEN_2D", "LAVA", "LAVA_FORK", "LAVA_SKULL", "LIBRARY_INTERIOR", "LIGHTHOUSE", "LIGHTHOUSE_HOUSE_A", "LIGHTHOUSE_SPIN", "MAUSOLEUM", "MEMORY_CORE", "MINE_A", "MINE_BOMB_PILLAR", "MINE_WRAP", "NATURE_HUB", "NUZU_ABANDONED_A", "NUZU_ABANDONED_B", "NUZU_BOILERROOM", "NUZU_DORM", "NUZU_SCHOOL", "OBSERVATORY", "OCTOHEAHEDRON", "OLDSCHOOL", "OLDSCHOOL_RUINS", "ORRERY", "ORRERY_B", "OWL", "PARLOR", "PARLOR_2D", "PIVOT_ONE", "PIVOT_THREE", "PIVOT_THREE_CAVE", "PIVOT_TWO", "PIVOT_WATERTOWER", "PURPLE_LODGE", "PURPLE_LODGE_RUIN", "PYRAMID", "QUANTUM", "RAILS", "RITUAL", "SCHOOL", "SCHOOL_2D", "SEWER_FORK", "SEWER_GEYSER", "SEWER_HUB", "SEWER_LESSER_GATE_B", "SEWER_PILLARS", "SEWER_PIVOT", "SEWER_QR", "SEWER_START", "SEWER_TO_LAVA", "SEWER_TREASURE_ONE", "SEWER_TREASURE_TWO", "SHOWERS", "SKULL", "SKULL_B", "SPINNING_PLATES", "STARGATE", "STARGATE_RUINS", "SUPERSPIN_CAVE", "TELESCOPE", "TEMPLE_OF_LOVE", "THRONE", "TREE", "TREE_CRUMBLE", "TREE_OF_DEATH", "TREE_ROOTS", "TREE_SKY", "TRIAL", "TRIPLE_PIVOT_CAVE", "TWO_WALLS", "VILLAGEVILLE_2D", "VILLAGEVILLE_3D", "VILLAGEVILLE_3D_END_32", "VILLAGEVILLE_3D_END_64", "VISITOR", "WALL_HOLE", "WALL_INTERIOR_A", "WALL_INTERIOR_B", "WALL_INTERIOR_HOLE", "WALL_KITCHEN", "WALL_SCHOOL", "WALL_VILLAGE", "WATER_PYRAMID", "WATER_TOWER", "WATER_WHEEL", "WATER_WHEEL_B", "WATERFALL", "WATERFALL_ALT", "WATERTOWER_SECRET", "WEIGHTSWITCH_TEMPLE", "WELL_2", "WINDMILL_CAVE", "WINDMILL_INT", "ZU_4_SIDE", "ZU_BRIDGE", "ZU_CITY", "ZU_CITY_RUINS", "ZU_CODE_LOOP", "ZU_FORK", "ZU_HEADS", "ZU_HOUSE_EMPTY", "ZU_HOUSE_EMPTY_B", "ZU_HOUSE_QR", "ZU_HOUSE_RUIN_GATE", "ZU_HOUSE_RUIN_VISITORS", "ZU_HOUSE_SCAFFOLDING", "ZU_LIBRARY", "ZU_SWITCH", "ZU_SWITCH_B", "ZU_TETRIS", "ZU_THRONE_RUINS", "ZU_UNFOLD", "ZU_ZUISH"};
+
+  vars.splits = new Dictionary<string, List<string>>();
+  var addSetting = (Action<string, string, string, string, string>)((string settingId, string name, string fromLevel, string toLevel, string tooltip) => {
+    settings.Add(settingId, false, name);
+    settings.SetToolTip(settingId, tooltip);
+    if (!vars.levels.Contains(fromLevel)) throw new Exception(fromLevel + " is not a valid level name");
+    if (!vars.levels.Contains(toLevel)) throw new Exception(toLevel + " is not a valid level name");
+
+    string splitsKey = fromLevel + "." + toLevel;
+    List<string> splitsValue;
+    if (!vars.splits.TryGetValue(splitsKey, out splitsValue)) {
+      splitsValue = new List<string>();
+      vars.splits[splitsKey] = splitsValue;
+    }
+    splitsValue.Add(settingId);
+  });
+
   settings.Add("all_levels", false, "Split when changing levels");
   settings.Add("anySplits", true, "Any% Splits");
   settings.CurrentDefaultParent = "anySplits";
 
-  settings.Add("village", false, "Village");
-  settings.SetToolTip("village", "Entering Nature Hub from Memory Core");
-  settings.Add("bellTower", false, "Bell Tower");
-  settings.SetToolTip("bellTower", "Entering Nature Hub from Two Walls shortcut door");
-  settings.Add("waterfall", false, "Waterfall");
-  settings.SetToolTip("waterfall", "Warping to Nature Hub from CMY B");
-  settings.Add("waterfall2", false, "Waterfall (8bac route)");
-  settings.SetToolTip("waterfall2", "Warping to Nature Hub from Infinite Fall");
-  settings.Add("arch", false, "Arch");
-  settings.SetToolTip("arch", "Warping to Nature Hub from Five Towers");
-  settings.Add("tree", false, "Tree");
-  settings.SetToolTip("tree", "Entering Zu City Ruins from Zu Bridge");
-  settings.Add("zu", false, "Zu");
-  settings.SetToolTip("zu", "Warping to Zu City Ruins from Visitor");
-  settings.Add("lighthouse", false, "Lighthouse");
-  settings.SetToolTip("lighthouse", "Entering Memory Core from Pivot Watertower shortcut door");
-  settings.Add("ending32", false, "Ending (32)");
-  settings.SetToolTip("ending32", "Exiting Gomez's house after 32-cube ending");
+  addSetting("village",    "Village",                "MEMORY_CORE",        "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("bellTower",  "Bell Tower",             "TWO_WALLS",          "NATURE_HUB",             "Entering Nature Hub from Two Walls shortcut door");
+  addSetting("waterfall",  "Waterfall",              "CMY_B",              "NATURE_HUB",             "Warping to Nature Hub from CMY B");
+  addSetting("waterfall2", "Waterfall (8bac route)", "ZU_CODE_LOOP",       "NATURE_HUB",             "Warping to Nature Hub from Infinite Fall");
+  addSetting("arch",       "Arch",                   "FIVE_TOWERS",        "NATURE_HUB",             "Warping to Nature Hub from Five Towers");
+  addSetting("tree",       "Tree",                   "ZU_BRIDGE",          "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("zu",         "Zu",                     "VISITOR",            "ZU_CITY_RUINS",          "Warping to Zu City Ruins from Visitor");
+  addSetting("lighthouse", "Lighthouse",             "PIVOT_WATERTOWER",   "MEMORY_CORE",            "Entering Memory Core from Pivot Watertower shortcut door");
+  addSetting("ending32",   "Ending (32)",            "GOMEZ_HOUSE_END_32", "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
+
+  settings.CurrentDefaultParent = null;
+  settings.Add("fullCompletionSplits", false, "Full Completion Splits (Juikuen's route)");
+  settings.CurrentDefaultParent = "fullCompletionSplits";
+
+  addSetting("full_village",     "Village",            "MEMORY_CORE",        "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("full_waterfall",   "Waterfall",          "CMY_B",              "NATURE_HUB",             "Warping to Nature Hub from CMY B");
+  addSetting("full_bellTower",   "Bell Tower",         "TWO_WALLS",          "NATURE_HUB",             "Entering Nature Hub from Two Walls shortcut door");
+  addSetting("full_mine",        "Mine",               "MINE_WRAP",          "NATURE_HUB",             "Warping to Nature Hub from Mine Wrap");
+  addSetting("full_tree",        "Tree",               "ZU_BRIDGE",          "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("full_zu",          "Zu",                 "ZU_CITY_RUINS",      "NATURE_HUB",             "Warping to Nature Hub from Zu City Ruins");
+  addSetting("full_arch",        "Arch",               "QUANTUM",            "NATURE_HUB",             "Warping to Nature Hub from Quantum");
+  addSetting("full_lighthouse",  "Lighthouse",         "PIVOT_WATERTOWER",   "MEMORY_CORE",            "Entering Memory Core from Pivot Watertower shortcut door");
+  addSetting("full_cubeDoors",   "Cube Doors",         "PIVOT_WATERTOWER",   "INDUSTRIAL_HUB",         "Entering Industrial Hub from Pivot Watertower");
+  addSetting("full_industrial",  "Industrial",         "WELL_2",             "SEWER_START",            "Entering Sewer Start from Well 2");
+  addSetting("full_sewers",      "Sewers",             "SEWER_TO_LAVA",      "NUZU_ABANDONED_B",       "Entering Nuzu Abandoned B from Sewer To Lava");
+  addSetting("full_industrial2", "Industrial Wrap-up", "INDUSTRIAL_HUB",     "NATURE_HUB",             "Warping to Nature Hub from Industrial Hub");
+  addSetting("full_graveyard",   "Graveyard",          "GRAVEYARD_GATE",     "NATURE_HUB",             "Warping to Nature Hub from Graveyard Gate");
+  addSetting("full_ending64",    "Ending (64)",        "GOMEZ_HOUSE_END_64", "VILLAGEVILLE_3D_END_64", "Exiting Gomez's house after 64-cube ending");
+
+  settings.CurrentDefaultParent = null;
+  settings.Add("artifactSplits", false, "Artifact% Splits");
+  settings.CurrentDefaultParent = "artifactSplits";
+
+  addSetting("artifact_village",    "Village",                "MEMORY_CORE",        "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("artifact_bellTower",  "Bell Tower",             "TWO_WALLS",          "NATURE_HUB",             "Entering Nature Hub from Two Walls shortcut door");
+  addSetting("artifact_waterfall",  "Waterfall",              "CMY_B",              "NATURE_HUB",             "Warping to Nature Hub from CMY B");
+  addSetting("artifact_arch",       "Arch",                   "FIVE_TOWERS",        "NATURE_HUB",             "Warping to Nature Hub from Five Towers");
+  addSetting("artifact_tree",       "Tree",                   "ZU_BRIDGE",          "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("artifact_zu",         "Zu",                     "ZU_LIBRARY",         "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Library");
+  addSetting("artifact_graveyard",  "Graveyard",              "GRAVE_TREASURE_A",   "GRAVEYARD_GATE",         "Entering Graveyard Gate from Graveyard Treasure");
+  addSetting("artifact_lighthouse", "Lighthouse",             "NATURE_HUB",         "MEMORY_CORE",            "Entering Memory Core from Nature Hub");
+  addSetting("artifact_ending32",   "Ending (32)",            "GOMEZ_HOUSE_END_32", "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
 
   settings.CurrentDefaultParent = null;
   settings.Add("deathcount", false, "Override first text component with a Fall Counter");
@@ -79,10 +121,10 @@ init {
     throw new Exception("Couldn't find speedrunIsLive / timerBase!");
   }
 
-  vars.log("Found FezGame at 0x" + fezGame.ToString("X"));
-  vars.log("Found speedrunIsLive at 0x" + speedrunIsLive.ToString("X"));
-  vars.log("Found timerBase at 0x" + timerBase.ToString("X"));
-  vars.log("Found all sigscans, ready for start of run");
+  vars.log("Found FezGame at 0x" + fezGame.ToString("X") +
+           "\nFound speedrunIsLive at 0x" + speedrunIsLive.ToString("X") +
+           "\nFound timerBase at 0x" + timerBase.ToString("X") +
+           "\nFound all sigscans, ready for start of run");
 
   // FezGame.SpeedRun.Began
   vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
@@ -96,9 +138,10 @@ init {
   vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x78, 0x88, 0x70));
   // FezGame.Program.fez.GameState.SaveData.Level
   vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x78, 0x60, 0x14, 0x8), 100);
-  
+
   vars.gameTime = 0;
   vars.runStarting = false;
+  vars.level = null;
   vars.watchers = new MemoryWatcherList() {
     vars.speedrunIsLive,
     vars.timerElapsed,
@@ -121,7 +164,6 @@ init {
       }
     }
   }
-  vars.levels = new List<string> {"ABANDONED_A", "ABANDONED_B", "ABANDONED_C", "ANCIENT_WALLS", "ARCH", "BELL_TOWER", "BIG_OWL", "BIG_TOWER", "BOILEROOM", "CABIN_INTERIOR_A", "CABIN_INTERIOR_B", "CLOCK", "CMY", "CMY_B", "CMY_FORK", "CODE_MACHINE", "CRYPT", "DRUM", "ELDERS", "EXTRACTOR_A", "FIVE_TOWERS", "FIVE_TOWERS_CAVE", "FOX", "FRACTAL", "GEEZER_HOUSE", "GEEZER_HOUSE_2D", "GLOBE", "GLOBE_INT", "GOMEZ_HOUSE", "GOMEZ_HOUSE_2D", "GOMEZ_HOUSE_END_32", "GOMEZ_HOUSE_END_64", "GRAVE_CABIN", "GRAVE_GHOST", "GRAVE_LESSER_GATE", "GRAVE_TREASURE_A", "GRAVEYARD_A", "GRAVEYARD_GATE", "HEX_REBUILD", "INDUST_ABANDONED_A", "INDUSTRIAL_CITY", "INDUSTRIAL_HUB", "INDUSTRIAL_SUPERSPIN", "KITCHEN", "KITCHEN_2D", "LAVA", "LAVA_FORK", "LAVA_SKULL", "LIBRARY_INTERIOR", "LIGHTHOUSE", "LIGHTHOUSE_HOUSE_A", "LIGHTHOUSE_SPIN", "MAUSOLEUM", "MEMORY_CORE", "MINE_A", "MINE_BOMB_PILLAR", "MINE_WRAP", "NATURE_HUB", "NUZU_ABANDONED_A", "NUZU_ABANDONED_B", "NUZU_BOILERROOM", "NUZU_DORM", "NUZU_SCHOOL", "OBSERVATORY", "OCTOHEAHEDRON", "OLDSCHOOL", "OLDSCHOOL_RUINS", "ORRERY", "ORRERY_B", "OWL", "PARLOR", "PARLOR_2D", "PIVOT_ONE", "PIVOT_THREE", "PIVOT_THREE_CAVE", "PIVOT_TWO", "PIVOT_WATERTOWER", "PURPLE_LODGE", "PURPLE_LODGE_RUIN", "PYRAMID", "QUANTUM", "RAILS", "RITUAL", "SCHOOL", "SCHOOL_2D", "SEWER_FORK", "SEWER_GEYSER", "SEWER_HUB", "SEWER_LESSER_GATE_B", "SEWER_PILLARS", "SEWER_PIVOT", "SEWER_QR", "SEWER_START", "SEWER_TO_LAVA", "SEWER_TREASURE_ONE", "SEWER_TREASURE_TWO", "SHOWERS", "SKULL", "SKULL_B", "SPINNING_PLATES", "STARGATE", "STARGATE_RUINS", "SUPERSPIN_CAVE", "TELESCOPE", "TEMPLE_OF_LOVE", "THRONE", "TREE", "TREE_CRUMBLE", "TREE_OF_DEATH", "TREE_ROOTS", "TREE_SKY", "TRIAL", "TRIPLE_PIVOT_CAVE", "TWO_WALLS", "VILLAGEVILLE_2D", "VILLAGEVILLE_3D", "VILLAGEVILLE_3D_END_32", "VILLAGEVILLE_3D_END_64", "VISITOR", "WALL_HOLE", "WALL_INTERIOR_A", "WALL_INTERIOR_B", "WALL_INTERIOR_HOLE", "WALL_KITCHEN", "WALL_SCHOOL", "WALL_VILLAGE", "WATER_PYRAMID", "WATER_TOWER", "WATER_WHEEL", "WATER_WHEEL_B", "WATERFALL", "WATERFALL_ALT", "WATERTOWER_SECRET", "WEIGHTSWITCH_TEMPLE", "WELL_2", "WINDMILL_CAVE", "WINDMILL_INT", "ZU_4_SIDE", "ZU_BRIDGE", "ZU_CITY", "ZU_CITY_RUINS", "ZU_CODE_LOOP", "ZU_FORK", "ZU_HEADS", "ZU_HOUSE_EMPTY", "ZU_HOUSE_EMPTY_B", "ZU_HOUSE_QR", "ZU_HOUSE_RUIN_GATE", "ZU_HOUSE_RUIN_VISITORS", "ZU_HOUSE_SCAFFOLDING", "ZU_LIBRARY", "ZU_SWITCH", "ZU_SWITCH_B", "ZU_TETRIS", "ZU_THRONE_RUINS", "ZU_UNFOLD", "ZU_ZUISH"};
 }
 
 update {
@@ -162,27 +204,15 @@ split {
     if (vars.levels.Contains(newLevel) && oldLevel != newLevel) {
       vars.log("New level is an actual level name: " + newLevel);
       vars.level = newLevel;
-      if (settings["all_levels"]) {
-        return true;
-      }
-      if (oldLevel == "MEMORY_CORE" && newLevel == "NATURE_HUB") {
-        return settings["village"];
-      } else if (oldLevel == "TWO_WALLS" && newLevel == "NATURE_HUB") {
-        return settings["bellTower"];
-      } else if (oldLevel == "PIVOT_WATERTOWER" && newLevel == "MEMORY_CORE") {
-        return settings["lighthouse"];
-      } else if (oldLevel == "ZU_BRIDGE" && newLevel == "ZU_CITY_RUINS") {
-        return settings["tree"];
-      } else if (oldLevel == "GOMEZ_HOUSE_END_32" && newLevel == "VILLAGEVILLE_3D_END_32") {
-        return settings["ending32"];
-      } else if (oldLevel == "CMY_B" && newLevel == "NATURE_HUB") {
-        return settings["waterfall"];
-      } else if (oldLevel == "ZU_CODE_LOOP" && newLevel == "NATURE_HUB") {
-        return settings["waterfall2"];
-      } else if (oldLevel == "FIVE_TOWERS" && newLevel == "NATURE_HUB") {
-        return settings["arch"];
-      } else if (oldLevel == "VISITOR" && newLevel == "ZU_CITY_RUINS") {
-        return settings["zu"];
+
+      if (settings["all_levels"]) return true;
+      List<string> settingIds;
+      if (vars.splits.TryGetValue(oldLevel + "." + newLevel, out settingIds)) {
+        vars.log("Transition from " + oldLevel + " to " + newLevel + " found in splits dictionary");
+        foreach (string settingId in settingIds) {
+          vars.log("Setting " + settingId + " is " + settings[settingId]);
+          if (settings[settingId]) return true;
+        }
       }
     }
   }
