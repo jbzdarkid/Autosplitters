@@ -1,22 +1,29 @@
 state("braid", "steam") {
   int world      : 0x1F718C;
   int level      : 0x1F7190;
-  bool flagPole  : 0x1F942C;
+  byte flagPole  : 0x1F942C;
   int gameFrames : 0x1F9434;
 }
 
 state("braid", "standalone") {
   int world      : 0x1F110C;
   int level      : 0x1F1110;
-  bool flagPole  : 0x1F33AC;
+  byte flagPole  : 0x1F33AC;
   int gameFrames : 0x1F33B4;
 }
 
 state("braid", "kanban55") {
   int world      : 0x18B93C;
   int level      : 0x18B940;
-  bool flagPole  : 0x18DBDC;
+  byte flagPole  : 0x18DBDC;
   int gameFrames : 0x18DBE4;
+}
+
+state("braid64_d3d11_final", "anniversary") {
+  int world      : 0x4584C8;
+  int level      : 0x4584CC;
+  byte flagPole  : 0x45B89C;
+  int gameFrames : 0x45B8A4;
 }
 
 startup {
@@ -36,6 +43,7 @@ startup {
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_braid.log";
   vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
     string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
@@ -49,20 +57,29 @@ startup {
 
 init {
   vars.piecesBase = 0x0; // location of first piece minus 0x338
-  if (modules.First().ModuleMemorySize == 7663616) {
+  switch (modules.First().ModuleMemorySize) {
+  case 7663616:
     version = "steam";
     vars.piecesBase = 0x1F829C;
     vars.log("Using steam version");
-  }
-  if (modules.First().ModuleMemorySize == 7639040) {
+    break;
+  case 7639040:
     version = "standalone";
     vars.piecesBase = 0x1F221C;
     vars.log("Using standalone version");
-  }
-  if (modules.First().ModuleMemorySize == 7229440) {
+    break;
+  case 7229440:
     version = "kanban55";
     vars.piecesBase = 0x18CA4C;
     vars.log("Using kanban55 version");
+    break;
+  case 12275712:
+    version = "anniversary";
+    vars.piecesBase = 0x459F88;
+    vars.log("Using anniversary version");
+    break;
+  default:
+    throw new Exception("Unknown version: " + modules.First().ModuleMemorySize);
   }
 
   // IDs are in display order in the top left
@@ -242,9 +259,9 @@ split {
     }
   }
 
-  // The "game is paused for the flagpole" logic is re-used on the meta-puzzles,
+  // This is actually speed_run_sound_flags, and it seems to be used as well while solving the meta-puzzles,
   // so ensure that we're actually in an end-of-world level
-  if (old.flagPole == false && current.flagPole == true) {
+  if ((old.flagPole & 0x01) == 0x00 && (current.flagPole & 0x01) == 0x01) {
     string currentName = current.world + "-" + current.level;
     if (currentName == "2-4" ||
         currentName == "3-8" ||
