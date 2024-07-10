@@ -56,26 +56,31 @@ startup {
 }
 
 init {
-  vars.piecesBase = 0x0; // location of first piece minus 0x338
+  vars.piecesBase = 0x0; // location of first piece minus 0x338 (classic) or 0x440 (anniversary)
+  vars.worldSize = 0x0; // Size of the world object (which contains the pieces)
   switch (modules.First().ModuleMemorySize) {
   case 7663616:
     version = "steam";
     vars.piecesBase = 0x1F829C;
+    vars.worldSize = 0x18C;
     vars.log("Using steam version");
     break;
   case 7639040:
     version = "standalone";
     vars.piecesBase = 0x1F221C;
+    vars.worldSize = 0x18C;
     vars.log("Using standalone version");
     break;
   case 7229440:
     version = "kanban55";
     vars.piecesBase = 0x18CA4C;
+    vars.worldSize = 0x18C;
     vars.log("Using kanban55 version");
     break;
   case 12275712:
     version = "anniversary";
-    vars.piecesBase = 0x459F88;
+    vars.piecesBase = 0x459E80;
+    vars.worldSize = 0x210;
     vars.log("Using anniversary version");
     break;
   default:
@@ -144,7 +149,7 @@ init {
 
   for (int world=2; world<=6; world++) {
     for (int piece=1; piece<=12; piece++) {
-      vars.collectedPieces[vars.piecesBase + (0x18C * world) + (0x20 * piece)] = false;
+      vars.collectedPieces[vars.piecesBase + (vars.worldSize * world) + (0x20 * piece)] = false;
     }
   }
   vars.log("Finished initializing");
@@ -199,13 +204,13 @@ split {
     // Kanban55 bug: 3-8 -> 3-0 -> 0-0 (but 3-0 is not a valid level)
     if (vars.pieceMap.ContainsKey(currentName)) {
       foreach (var puzzleId in vars.pieceMap[currentName]) {
-        int address = vars.piecesBase + (0x18C * current.world) + (0x20 * puzzleId);
+        int address = vars.piecesBase + (vars.worldSize * current.world) + (0x20 * puzzleId);
         vars.currentPieces[address] = new DeepPointer(address);
       }
     }
 
     if (vars.completedLevels.ContainsKey(oldName)) {
-      vars.log("Level completion state: " + vars.completedLevels[oldName]);
+      vars.log(oldName + " previous completion state: " + vars.completedLevels[oldName]);
 
       // Ensure that we don't try to split for a level again. This value will
       // be reset to false if a piece is collected in the level.
@@ -277,6 +282,7 @@ split {
     if (vars.collectedPieces[piece] == false) {
       if (vars.currentPieces[piece].Deref<bool>(game) == true) {
         vars.log("Collected piece 0x" + piece.ToString("X") + " in level " + current.level);
+
         vars.collectedPieces[piece] = true;
         // Collected a piece so the world is not complete yet
         vars.completedLevels[current.world + "-" + current.level] = false;
