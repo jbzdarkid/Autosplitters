@@ -1,5 +1,7 @@
 state("FEZ") {}
 
+state("MONOMODDED_FEZ") {}
+
 startup {
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_fez.log";
   vars.log = (Action<string>)((string logLine) => {
@@ -126,30 +128,43 @@ init {
            "\nFound timerBase at 0x" + timerBase.ToString("X") +
            "\nFound all sigscans, ready for start of run");
 
-  // FezGame.SpeedRun.Began
-  vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
-  // FezGame.Speedrun.Timer.elapsed
-  vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
-  // FezGame.Speedrun.Timer.startTimeStamp
-  vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
-  // FezGame.Speedrun.Timer.isRunning
-  vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
-  // FezGame.Program.fez.GameState.PlayerManager.action
-  vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x78, 0x88, 0x70));
-  // FezGame.Program.fez.GameState.SaveData.Level
-  vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x78, 0x60, 0x14, 0x8), 100);
+  switch (modules.First().ModuleMemorySize) {
+  case 4333568:
+    vars.log("Loaded version 1.12 (steam) w/ HAT 1.2.0");
+    goto case 1155072;
+  case 1155072:
+    vars.log("Loaded version 1.12 (steam)");
+    // FezGame.SpeedRun.Began
+    vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
+    // FezGame.SpeedRun.Timer.elapsed
+    vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
+    // FezGame.SpeedRun.Timer.isRunning
+    vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
+    // FezGame.Program.fez.GameState.PlayerManager.action
+    vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x78, 0x6C, 0x70));
+    // FezGame.Program.fez.GameState.SaveData.Level
+    vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x78, 0x60, 0x14, 0x8), 100);
+    vars.watchers = new MemoryWatcherList { vars.speedrunIsLive, vars.timerElapsed, vars.timerEnabled, vars.gomezAction, vars.levelWatcher };
+    break;
+  case 1114112:
+    vars.log("Loaded version 1.07 (steam)");
+    // These 3 don't exist in this version, so we can't support automatic start/stop or IGT. Oh well.
+    vars.speedrunIsLive = null;
+    vars.timerElapsed = null;
+    vars.timerEnabled = null;
+    // FezGame.Program.fez.GameState.PlayerManager.action              vvvv
+    vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x70, 0x6C, 0x70));
+    // FezGame.Program.fez.GameState.SaveData.Level                vvvv
+    vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x70, 0x60, 0x14, 0x8), 100);
+    vars.watchers = new MemoryWatcherList { vars.gomezAction, vars.levelWatcher };
+    break;
+  default:
+    throw new Exception("Unknown version: " + modules.First().ModuleMemorySize);
+  }
 
   vars.gameTime = 0;
   vars.runStarting = false;
   vars.level = null;
-  vars.watchers = new MemoryWatcherList() {
-    vars.speedrunIsLive,
-    vars.timerElapsed,
-    vars.timerStart,
-    vars.timerEnabled,
-    vars.gomezAction,
-    vars.levelWatcher,
-  };
   vars.deathCount = 0;
   vars.updateText = false;
   vars.tcs = null;
@@ -175,6 +190,7 @@ update {
 }
 
 start {
+  if (vars.speedrunIsLive == null) return false; // 1.07 does not have speedrun mode
   if (!vars.speedrunIsLive.Old && vars.speedrunIsLive.Current) {
     vars.log("Speedrun starting");
     vars.runStarting = true;
@@ -190,6 +206,7 @@ start {
 }
 
 reset {
+  if (vars.speedrunIsLive == null) return false; // 1.07 does not have speedrun mode
   if (vars.speedrunIsLive.Old && !vars.speedrunIsLive.Current) {
     vars.log("Reset run");
     return true;
@@ -225,21 +242,11 @@ split {
 }
 
 isLoading {
-  return true;
+  return true; // Disable automatic interpolation when the timer is paused
 }
 
 gameTime {
-  if (vars.timerEnabled.Current)
-  {
-    var elapsedTicks = Stopwatch.GetTimestamp() - vars.timerStart.Current + vars.timerElapsed.Current;
-    // 10,000,000: Number of ticks in a second
-    var newGameTime = elapsedTicks * 10000000 / Stopwatch.Frequency;
-    if (Math.Abs(newGameTime - vars.gameTime) > 10000000) { // Time jump by > 1s
-      vars.log("Gametime jumped by >1s, waiting for a more stable value.");
-      vars.log("Old gametime: " + vars.gameTime + " New gametime: " + newGameTime);
-    } else {
-      vars.gameTime = newGameTime;
-    }
-    return new TimeSpan(vars.gameTime);
+  if (vars.timerEnabled != null && vars.timerEnabled.Current) {
+    return TimeSpan.FromTicks(vars.timerElapsed.Current);
   }
 }
