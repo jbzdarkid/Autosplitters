@@ -138,19 +138,22 @@ init {
     vars.speedrunIsLive = new MemoryWatcher<bool>(new DeepPointer(speedrunIsLive));
     // FezGame.SpeedRun.Timer.elapsed
     vars.timerElapsed = new MemoryWatcher<long>(new DeepPointer(timerBase, 0x4));
+    // FezGame.Speedrun.Timer.startTimeStamp
+    vars.timerStart = new MemoryWatcher<long>(new DeepPointer(timerBase, 0xC));
     // FezGame.SpeedRun.Timer.isRunning
     vars.timerEnabled = new MemoryWatcher<bool>(new DeepPointer(timerBase, 0x14));
     // FezGame.Program.fez.GameState.PlayerManager.action
     vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x78, 0x6C, 0x70));
     // FezGame.Program.fez.GameState.SaveData.Level
     vars.levelWatcher = new StringWatcher(new DeepPointer(fezGame, 0x78, 0x60, 0x14, 0x8), 100);
-    vars.watchers = new MemoryWatcherList { vars.speedrunIsLive, vars.timerElapsed, vars.timerEnabled, vars.gomezAction, vars.levelWatcher };
+    vars.watchers = new MemoryWatcherList { vars.speedrunIsLive, vars.timerElapsed, vars.timerStart, vars.timerEnabled, vars.gomezAction, vars.levelWatcher };
     break;
   case 1114112:
     vars.log("Loaded version 1.07 (steam)");
-    // These 3 don't exist in this version, so we can't support automatic start/stop or IGT. Oh well.
+    // These 4 don't exist in this version, so we can't support automatic start/stop or IGT. Oh well.
     vars.speedrunIsLive = null;
     vars.timerElapsed = null;
+    vars.timerStart = null;
     vars.timerEnabled = null;
     // FezGame.Program.fez.GameState.PlayerManager.action              vvvv
     vars.gomezAction = new MemoryWatcher<int>(new DeepPointer(fezGame, 0x70, 0x6C, 0x70));
@@ -247,6 +250,9 @@ isLoading {
 
 gameTime {
   if (vars.timerEnabled != null && vars.timerEnabled.Current) {
-    return TimeSpan.FromTicks(vars.timerElapsed.Current);
+    // C# stopwatches have an 'elapsed' value and a start timestamp.
+    // The elapsed value counts the cumulative time it's been live in the past,
+    // and the timestamp is the most recent time it was started.
+    return TimeSpan.FromTicks(vars.timerElapsed.Current + Stopwatch.GetTimestamp() - vars.timerStart.Current);
   }
 }
