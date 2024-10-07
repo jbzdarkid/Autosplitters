@@ -1,6 +1,19 @@
 state("ObraDinn") {}
 
 startup {
+  vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_obradinn.log";
+  vars.log = (Action<string>)((string logLine) => {
+    print(logLine);
+    string time = System.DateTime.Now.ToString("dd/MM/yy hh:mm:ss:fff");
+    System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
+  });
+  try {
+    vars.log("Autosplitter loaded");
+  } catch (System.IO.FileNotFoundException e) {
+    System.IO.File.Create(vars.logFilePath);
+    vars.log("Autosplitter loaded, log file created");
+  }
+
   var splitNames = new List<string>() {
     "d000-stow-m00-seag",
     "d000-stow-m01-stowaway",
@@ -76,7 +89,7 @@ startup {
     if (splitChapter != chapter) {
       chapter = splitChapter;
       part = 1;
-      settings.Add(chapters[chapter], false, chapters[chapter], "sceneSplits");
+      settings.Add(chapters[chapter], true, chapters[chapter], "sceneSplits");
     }
     settings.Add(splitName, true, "Part " + part, chapters[chapter]);
     part++;
@@ -84,40 +97,47 @@ startup {
 }
 
 init {
-  IntPtr ptr = IntPtr.Zero;
+  IntPtr saveDataPtr = IntPtr.Zero;
   foreach (var page in game.MemoryPages()) {
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-    ptr = scanner.Scan(new SigScanTarget(22, // Targeting byte 22
-      "83 C4 10", // add esp, 10
-      "83 EC 0C", // sub esp, 0C
-      "89 45 FC", // mov [ebp-4], eax
-      "50", // push eax
-      "E8 34000000" // call ???
-    ));
-    if (ptr != IntPtr.Zero) {
-      break;
+    if (saveDataPtr == IntPtr.Zero) {
+      saveDataPtr = scanner.Scan(new SigScanTarget(0x16, // Targeting byte 22 (hex 0x16)
+        "83 C4 10", // add esp, 10
+        "83 EC 0C", // sub esp, 0C
+        "89 45 FC", // mov [ebp-4], eax
+        "50", // push eax
+        "E8 34000000" // call ???
+      ));
     }
   }
-  if (ptr == IntPtr.Zero) {
-    throw new Exception("Couldn't find active scene");
-  }
-  int root = (int)((long)game.ReadValue<int>(ptr) - (long)(modules.First().BaseAddress));
-  vars.gameStart = new MemoryWatcher<int>(new DeepPointer(root, 0x24));
-  vars.sceneName = new StringWatcher(new DeepPointer(root, 0x24, 0x8, 0xC, 0xC), 100);
-  vars.state = new MemoryWatcher<int>(new DeepPointer(root, 0x24, 0x8, 0x1C));
-  vars.time = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x20));
-  vars.sceneTime = new MemoryWatcher<float>(new DeepPointer(root, 0x24, 0x8, 0x24));
+  if (saveDataPtr == IntPtr.Zero) throw new Exception("Couldn't find saveData");
+
+  // SaveData.it (static singleton)
+  int saveData = (int)((long)game.ReadValue<int>(saveDataPtr) - (long)(modules.First().BaseAddress));
+  // SaveData.data.general.lastVisitedMomentId
+  vars.lastVisitedMoment = new StringWatcher(new DeepPointer(saveData, 0x24, 0x8, 0xC, 0xC), 100);
+  // SaveData.data.general.era
+  vars.state = new MemoryWatcher<int>(new DeepPointer(saveData, 0x24, 0x8, 0x1C));
+  // SaveData.data.general.playTime
+  vars.time = new MemoryWatcher<float>(new DeepPointer(saveData, 0x24, 0x8, 0x20));
+  // SaveData.data.general.lastVisitedMomentExitPlayTime
+  vars.lastMomentExitTime = new MemoryWatcher<float>(new DeepPointer(saveData, 0x24, 0x8, 0x24));
+
+  vars.gameStart = new MemoryWatcher<int>(new DeepPointer(saveData, 0x24));
   vars.letter = new MemoryWatcher<float>(new DeepPointer(0x103F878, 0x1C, 0x8+0xA8));
 
   vars.watchers = new MemoryWatcherList() {
     vars.gameStart,
-    vars.sceneName,
+    vars.lastVisitedMoment,
     vars.state,
     vars.time,
-    vars.sceneTime,
-    vars.letter
+    vars.lastMomentExitTime,
+    vars.letter,
   };
-  vars.completedChapters = new HashSet<string>();
+
+  // Manual tracking for these because the game doesn't reset this data between attempts.
+  vars.currentMoment = null;
+  vars.completedMoments = new HashSet<string>();
 }
 
 update {
@@ -125,9 +145,11 @@ update {
 }
 
 start {
-  vars.completedChapters.Clear();
-  // Not the best, since it will start on load game too
-  return vars.gameStart.Changed;
+  if (vars.gameStart.Changed) {
+    vars.currentMoment = null;
+    vars.completedMoments.Clear();
+    return true;
+  }
 }
 
 isLoading {
@@ -139,24 +161,44 @@ gameTime {
 }
 
 split {
+  if (vars.state.Old != vars.state.Current) vars.log("Era changed from " + vars.state.Old + " to " + vars.state.Current);
   if (settings["oneYearLater"]) {
     if (vars.state.Old == 2 && vars.state.Current == 3) return true;
   }
   // Any% completion
   if (vars.letter.Old == 225 && vars.letter.Current == 247.5) return true;
 
-  if (vars.completedChapters.Contains(vars.sceneName.Old)) return false;
+  // If the 'last exited moment' time changes, then we must've exited a moment.
+  if (vars.lastMomentExitTime.Old != vars.lastMomentExitTime.Current) {
+    // Update the 'current moment' in case we reset during the first moment and we didn't get a lastVisitedMoment change
+    if (vars.currentMoment == null) {
+      vars.log("Current moment was null, updating to " + vars.lastVisitedMoment.Current);
+      vars.currentMoment = vars.lastVisitedMoment.Current;
+    }
 
-  // Most splits are upon returning to the boat
-  if (vars.sceneTime.Old != vars.sceneTime.Current) {
-    vars.completedChapters.Add(vars.sceneName.Old);
-    return settings[vars.sceneName.Old];
+    // Update the 'previous moment' for future comparisons
+    if (vars.completedMoments.Contains(vars.currentMoment)) {
+      vars.log("lastMomentExitTime changed, but we have already completed moment " + vars.currentMoment);
+      return false;
+    }
+
+    vars.log("lastMomentExitTime changed, we must have exited a moment, splitting for current moment " + vars.currentMoment);
+    vars.completedMoments.Add(vars.currentMoment);
+    return settings[vars.currentMoment];
   }
 
-  // If that split didn't occur, then wait until the scene name changes.
-  // This applies to ch6 & ch7.
-  if (vars.sceneName.Old != vars.sceneName.Current) {
-    vars.completedChapters.Add(vars.sceneName.Old);
-    return settings[vars.sceneName.Old];
+  if (vars.lastVisitedMoment.Old != vars.lastVisitedMoment.Current) {
+    bool shouldSplit = false;
+    if (vars.currentMoment != null && !vars.completedMoments.Contains(vars.currentMoment)) {
+      vars.log("We had not already completed moment " + vars.currentMoment + ", splitting for it now");
+      vars.completedMoments.Add(vars.currentMoment);
+
+      // This is primarily for ch4 and ch7 which have corpses which are 'only accessible from another corpse'
+      shouldSplit = settings[vars.currentMoment];
+    }
+
+    vars.log("Entered moment " + vars.lastVisitedMoment.Current + ", previous moment was " + vars.currentMoment);
+    vars.currentMoment = vars.lastVisitedMoment.Current;
+    return shouldSplit;
   }
 }
