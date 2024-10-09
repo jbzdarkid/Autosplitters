@@ -98,40 +98,52 @@ startup {
 
 init {
   IntPtr saveDataPtr = IntPtr.Zero;
+  IntPtr blackoutFramePtr = IntPtr.Zero;
   foreach (var page in game.MemoryPages()) {
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
     if (saveDataPtr == IntPtr.Zero) {
       saveDataPtr = scanner.Scan(new SigScanTarget(0x16, // Targeting byte 22 (hex 0x16)
-        "83 C4 10", // add esp, 10
-        "83 EC 0C", // sub esp, 0C
-        "89 45 FC", // mov [ebp-4], eax
-        "50", // push eax
-        "E8 34000000" // call ???
+        "83 C4 10",   // add esp, 10
+        "83 EC 0C",   // sub esp, 0C
+        "89 45 FC",   // mov [ebp-04], eax
+        "50",         // push eax
+        "E8 34000000" // call SaveData:.ctor
+      ));
+    }
+    if (blackoutFramePtr == IntPtr.Zero) {
+      blackoutFramePtr = scanner.Scan(new SigScanTarget(0xF, // Targeting byte 15 (hex 0xF)
+        "83 EC 08",    // sub esp, 08
+        "E8 35000000", // call UnityEngine.Time:get_frameCount
+        "8B C8",       // mov ecx, eax
+        "03 4D 08"     // add ecx, [ebp+08]
       ));
     }
   }
   if (saveDataPtr == IntPtr.Zero) throw new Exception("Couldn't find saveData");
+  if (blackoutFramePtr == IntPtr.Zero) throw new Exception("Couldn't find blackoutFrame");
 
   // SaveData.it (static singleton)
   int saveData = (int)((long)game.ReadValue<int>(saveDataPtr) - (long)(modules.First().BaseAddress));
   // SaveData.data.general.lastVisitedMomentId
   vars.lastVisitedMoment = new StringWatcher(new DeepPointer(saveData, 0x24, 0x8, 0xC, 0xC), 100);
   // SaveData.data.general.era
-  vars.state = new MemoryWatcher<int>(new DeepPointer(saveData, 0x24, 0x8, 0x1C));
+  vars.currentEra = new MemoryWatcher<int>(new DeepPointer(saveData, 0x24, 0x8, 0x1C));
   // SaveData.data.general.playTime
   vars.time = new MemoryWatcher<float>(new DeepPointer(saveData, 0x24, 0x8, 0x20));
   // SaveData.data.general.lastVisitedMomentExitPlayTime
   vars.lastMomentExitTime = new MemoryWatcher<float>(new DeepPointer(saveData, 0x24, 0x8, 0x24));
 
-  vars.gameStart = new MemoryWatcher<int>(new DeepPointer(saveData, 0x24));
+  // There is a global static that the game uses to black out the screen -- which is exactly what happens when we begin.
+  vars.blackoutFrame = new MemoryWatcher<int>(new DeepPointer(blackoutFramePtr, 0));
+
   vars.letter = new MemoryWatcher<float>(new DeepPointer(0x103F878, 0x1C, 0x8+0xA8));
 
   vars.watchers = new MemoryWatcherList() {
-    vars.gameStart,
     vars.lastVisitedMoment,
-    vars.state,
+    vars.currentEra,
     vars.time,
     vars.lastMomentExitTime,
+    vars.blackoutFrame,
     vars.letter,
   };
 
@@ -145,7 +157,7 @@ update {
 }
 
 start {
-  if (vars.gameStart.Changed) {
+  if (vars.blackoutFrame.Changed) {
     vars.currentMoment = null;
     vars.completedMoments.Clear();
     return true;
@@ -161,15 +173,14 @@ gameTime {
 }
 
 split {
-  if (vars.state.Old != vars.state.Current) vars.log("Era changed from " + vars.state.Old + " to " + vars.state.Current);
   if (settings["oneYearLater"]) {
-    if (vars.state.Old == 2 && vars.state.Current == 3) return true;
+    if (vars.currentEra.Old == 2 && vars.currentEra.Current == 3) return true;
   }
   // Any% completion
   if (vars.letter.Old == 225 && vars.letter.Current == 247.5) return true;
 
-  // If the 'last exited moment' time changes, then we must've exited a moment.
-  if (vars.lastMomentExitTime.Old != vars.lastMomentExitTime.Current) {
+  // If the 'last exited moment' time changed *and* we didn't just start a run, then we must've exited a moment during the run.
+  if (vars.lastMomentExitTime.Changed && vars.lastMomentExitTime.Current != 0) {
     // Update the 'current moment' in case we reset during the first moment and we didn't get a lastVisitedMoment change
     if (vars.currentMoment == null) {
       vars.log("Current moment was null, updating to " + vars.lastVisitedMoment.Current);
