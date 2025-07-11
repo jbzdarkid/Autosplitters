@@ -56,6 +56,8 @@ state("BattleBlockTheater") {
   byte gameActive : 0x3131A5;
   int loadout     : 0x30ACB0, 0x64, 0x1C0; // TODO: Improve?
   byte animation  : 0x315420, 0x8B;
+  int squareX     : 0x315420, 0x270;
+  int squareY     : 0x315420, 0x274;
 
 /*
   byte chapter    : 0x30E7C0, 0x37F6;
@@ -64,8 +66,6 @@ state("BattleBlockTheater") {
   int gameFrames  : 0x315420, 0x8;
   float playerX   : 0x315420, 0x50;
   float playerY   : 0x315420, 0x54;
-  int squareX     : 0x315420, 0x270;
-  int squareY     : 0x315420, 0x274;
   byte levelWidth : 0x315420, 0x20, 0x109;
   byte levelHeight: 0x315420, 0x20, 0x10A;
 */
@@ -83,6 +83,7 @@ startup {
   // For IL runs
   settings.Add("Start when entering a chapter instead of selecting a loadout", false);
   settings.Add("Reset when exiting a chapter", false);
+  settings.Add("Start when entering level 1 instead of selecting a loadout", false);
 
   vars.logFilePath = Directory.GetCurrentDirectory() + "\\autosplitter_battleblock.log";
   vars.log = (Action<string>)((string logLine) => {
@@ -119,14 +120,7 @@ update {
 }
 
 start {
-  if (!settings["Start when entering a chapter instead of selecting a loadout"]) {
-    // Selected a loadout (0 -> non-0) while the game is not active
-    if (old.loadout == 0 && current.loadout > 0) {
-      vars.deathCount = current.deathCount;
-      vars.log("Started because the player confirmed an initial loadout");
-      return true;
-    }
-  } else {
+  if (settings["Start when entering a chapter instead of selecting a loadout"]) {
     // Entered a chapter from the lobby
     if (current.inLobby != 0) {
       if (old.animation != current.animation && current.animation == 93) {
@@ -134,6 +128,22 @@ start {
         vars.deathCount = current.deathCount;
         return true;
       }
+    }
+  } else if (settings["Start when entering level 1 instead of selecting a loadout"]) {
+    // If we're in the lobby (253) and standing in front of door 1
+    if (current.level == 253 && current.squareX >= 7 && current.squareX <= 9 && current.squareY >= 15) {
+      if (old.animation != current.animation && current.animation == 41) { // And we start the spinny enter door animation
+        vars.log("Started because the player entered a level 1");
+        vars.deathCount = current.deathCount;
+        return true;
+      }
+    }
+  } else {
+    // Selected a loadout (0 -> non-0) while the game is not active
+    if (old.loadout == 0 && current.loadout > 0) {
+      vars.deathCount = current.deathCount;
+      vars.log("Started because the player confirmed an initial loadout");
+      return true;
     }
   }
 }
