@@ -51,6 +51,47 @@ startup {
   addSetting("ending32",   "Ending (32)",            "GOMEZ_HOUSE_END_32", "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
 
   settings.CurrentDefaultParent = null;
+  settings.Add("2094Splits", true, "209.4% Splits");
+  settings.CurrentDefaultParent = "2094Splits";
+
+  addSetting("2094_village",     "Village",            "MEMORY_CORE",        "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("2094_bellTower",   "Bell Tower",         "TWO_WALLS",          "NATURE_HUB",             "Entering Nature Hub from Two Walls shortcut door");
+  addSetting("2094_waterfall",   "Waterfall",          "ZU_CODE_LOOP",       "NATURE_HUB",             "Warping to Nature Hub from Infinite Fall");
+  addSetting("2094_arch",        "Arch",               "FIVE_TOWERS",        "NATURE_HUB",             "Warping to Nature Hub from Five Towers");  
+  addSetting("2094_tree",        "Tree",               "ZU_BRIDGE",          "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("2094_zu",          "Zu",                 "CLOCK",              "ZU_CITY_RUINS",          "Warping to Zu City Ruins from Clock Tower");
+  addSetting("2094_mine",        "Mine",               "MINE_WRAP",          "NATURE_HUB",             "Warping to Nature Hub from Mine Wrap");
+  addSetting("2094_lighthouse",  "Lighthouse",         "PIVOT_WATERTOWER",   "INDUSTRIAL_HUB",         "Entering Industrial Hub from Pivot Watertower");
+  addSetting("2094_windmill",    "Windmill",           "PIVOT_THREE",        "INDUSTRIAL_HUB",         "Warping to Industrial Hub from Pivot Three");
+  addSetting("2094_industrial",  "Industrial",         "SUPERSPIN_CAVE",     "INDUSTRIAL_HUB",         "Warping to Industrial Hub from Superspin Cave");
+  addSetting("2094_sewers",      "Sewers",             "SEWER_TO_LAVA",      "NUZU_ABANDONED_B",       "Entering Nuzu Abandoned B from Sewer To Lava");
+  addSetting("2094_elevators",   "Elevators",          "SPINNING_PLATES",     "INDUSTRIAL_HUB",        "Warping to Industrial Hub from Spinning Plates");
+  addSetting("2094_graveyard",   "Graveyard",          "GRAVEYARD_GATE",     "NATURE_HUB",             "Warping to Nature Hub from Graveyard Gate");
+  addSetting("2094_4cd",         "4CD",                "WALL_VILLAGE",        "MEMORY_CORE",           "Entering Memory Core from Wall Village");
+  addSetting("2094_8cd",         "8CD",                "INDUSTRIAL_CITY",     "MEMORY_CORE",           "Entering Memory Core from Industrial City");  
+  addSetting("2094_ending64",    "Ending (64)",        "GOMEZ_HOUSE_END_64", "VILLAGEVILLE_3D_END_64", "Exiting Gomez's house after 64-cube ending");
+
+  settings.CurrentDefaultParent = null;
+  settings.Add("agcSplits", true, "All Golden Cubes");
+  settings.CurrentDefaultParent = "agcSplits";
+
+  addSetting("agc_village",     "Village",           "MEMORY_CORE",         "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("agc_waterfall",   "Waterfall",         "MINE_WRAP",           "NATURE_HUB",             "Warping Nature Hub from Mine Wrap");
+  addSetting("agc_belltower",   "Bell Tower",        "TWO_WALLS",           "NATURE_HUB",             "Entering Nature Hub through Two Walls shortcut door");
+  addSetting("agc_arches",      "Arches",            "FIVE_TOWERS",         "NATURE_HUB",             "Warping to Nature Hub from Five Towers");
+  addSetting("agc_tree",        "Tree",              "ZU_BRIDGE",           "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("agc_zu",          "Zu",                "CLOCK",               "ZU_CITY_RUINS",          "Warping to Zu City Ruins from Clock");
+  addSetting("agc_lighthouse",  "Lighthouse",        "PIVOT_WATERTOWER",    "INDUSTRIAL_HUB",         "Entering Industrial Hub from Pivot Watertower");
+  addSetting("agc_windmill",    "Windmill",          "PIVOT_THREE",         "INDUSTRIAL_HUB",         "Warping to Industrial Hub from Pivot Three");
+  addSetting("agc_industrial",  "Industrial",        "SUPERSPIN_CAVE",      "INDUSTRIAL_HUB",         "Warping to Industrial Hub from Superspin Cave");
+  addSetting("agc_sewer",       "Sewer",             "SEWER_LESSER_GATE_B", "SEWER_HUB",              "Entering Sewer Hub from Sewer Lesser Gate B");  
+  addSetting("agc_elevators",   "Elevators",         "SPINNING_PLATES",     "INDUSTRIAL_HUB",         "Warping to Industrial Hub from Spinning Plates");
+  addSetting("agc_graveyard",   "Graveyard",         "GRAVEYARD_GATE",      "NATURE_HUB",             "Warping to Nature Hub from Graveyard Gate");
+  addSetting("agc_4cd",         "4CD",               "WALL_VILLAGE",        "MEMORY_CORE",            "Entering Memory Core from Wall Village");
+  addSetting("agc_8cd",         "8CD",               "INDUSTRIAL_CITY",     "MEMORY_CORE",            "Entering Memory Core from Industrial City");
+  addSetting("agc_ending",      "Ending",            "GOMEZ_HOUSE_END_32",  "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
+
+  settings.CurrentDefaultParent = null;
   settings.Add("fullCompletionSplits", false, "Full Completion Splits (Juikuen's route)");
   settings.CurrentDefaultParent = "fullCompletionSplits";
 
