@@ -92,6 +92,23 @@ startup {
   addSetting("agc_ending",      "Ending",            "GOMEZ_HOUSE_END_32",  "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
 
   settings.CurrentDefaultParent = null;
+  settings.Add("aacSplits", true, "All Anti Cubes");
+  settings.CurrentDefaultParent = "aacSplits";
+
+  addSetting("aac_village",     "Village",           "MEMORY_CORE",         "NATURE_HUB",             "Entering Nature Hub from Memory Core");
+  addSetting("aac_waterfall",   "Waterfall",         "CMY_B",               "NATURE_HUB",             "Warping to Nature Hub from Sync");
+  addSetting("aac_belltower",   "Bell Tower",        "TWO_WALLS",           "NATURE_HUB",             "Entering Nature Hub through Two Walls shortcut door");
+  addSetting("aac_arches",      "Arches",            "QUANTUM",             "NATURE_HUB",             "Warping to Nature Hub from Glitch");
+  addSetting("aac_tree",        "Tree",              "ZU_BRIDGE",           "ZU_CITY_RUINS",          "Entering Zu City Ruins from Zu Bridge");
+  addSetting("aac_zu",          "Zu",                "ZU_CITY_RUINS",       "NATURE_HUB",             "Warping to Nature Hub from Zu City Ruins");
+  addSetting("aac_lighthouse",  "Lighthouse",        "PIVOT_WATERTOWER",    "INDUSTRIAL_HUB",         "Entering Industrial Hub from Pivot Watertower");
+  addSetting("aac_windmill",    "Windmill",          "WELL_2",              "SEWER_START",            "Entering Sewer from Well 2");
+  addSetting("aac_sewer",       "Sewer",             "SEWER_HUB",           "NATURE_HUB",             "Warping to Nature Hub from Sewer Hub");  
+  addSetting("aac_graveyard",   "Graveyard",         "GRAVEYARD_GATE",      "NATURE_HUB",             "Warping to Nature Hub from Graveyard Gate");
+  addSetting("aac_8cd",         "8CD",               "INDUSTRIAL_CITY",     "MEMORY_CORE",            "Entering Memory Core from Industrial City");
+  addSetting("aac_ending",      "Ending",            "GOMEZ_HOUSE_END_32",  "VILLAGEVILLE_3D_END_32", "Exiting Gomez's house after 32-cube ending");
+
+  settings.CurrentDefaultParent = null;
   settings.Add("fullCompletionSplits", false, "Full Completion Splits (Juikuen's route)");
   settings.CurrentDefaultParent = "fullCompletionSplits";
 
