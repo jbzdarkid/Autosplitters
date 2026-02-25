@@ -45,7 +45,7 @@ startup {
     toLevel = levelNames[toLevel];
     vars.splits[id] = (Func<bool>)(() => vars.level.Old == fromLevel && vars.level.Current == toLevel);
   });
-  
+
   addLevelChangeSetting("OVERWORLD",  "WAKEUP",     "enter_wakeup",     "Intro clip",           "Clipping into the intro building to start the credits");
   addLevelChangeSetting("WAKEUP",     "OVERWORLD",  "exit_wakeup",      "Wakeup",               "Exiting the intro building after getting the arm");
   addLevelChangeSetting("OVERWORLD",  "FORGE",      "enter_forge",      "Enter Forge",          "Entering the forge before getting the sword");
@@ -76,7 +76,7 @@ startup {
   addAnimationSetting(299, 13, -145,                "forest_core",      "Forest Core",          "Picking up the core from the colossus in forest");
   addAnimationSetting(51, 1.6, 98.4,                "robot_wakeup",     "Activate Colossus",    "Pressing the handprint after inserting all 3 cores");
 
-  settings.Add("deathcount", false, "Override first text component with a Fall Counter");
+  settings.Add("deathcount", false, "Override first text component with a Death Counter");
 }
 
 init {
@@ -93,7 +93,7 @@ init {
   IntPtr gameWorldFunction = ptr + game.ReadValue<int>(ptr) + 5;
   int gameWorld = game.ReadValue<int>(gameWorldFunction) - (int)page.BaseAddress;
   vars.log("Found gameWorld: " + gameWorld.ToString("X"));
-  
+
   ptr = scanner.Scan(new SigScanTarget(14, "8B 6C 24 14 51"));
   if (ptr == IntPtr.Zero) {
     vars.log("Couldn't find InMenu!");
@@ -190,7 +190,7 @@ split {
           return false;
         }
       }
-      
+
       vars.log("Completed " + splitId + " returning setting value: " + settings[splitId]);
       return settings[kvp.Key];
     }
@@ -204,7 +204,7 @@ split {
       return true;
     }
   }
-  
+
   if (vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3)) {
     vars.log("Backup split for 'end of game' (e.g. good ending)");
     return true;
