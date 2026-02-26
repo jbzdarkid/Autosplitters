@@ -25,18 +25,18 @@ startup {
   vars.splits = new Dictionary<string, Func<bool>>();
   vars.completedSplits = new HashSet<string>();
 
-  // The player is "close to a point" if they're within 5 units (25 = 5^2)
-  vars.CloseToPoint = (Func<double, double, double, bool>) ((double x, double y, double z) => {
+  vars.CloseToPoint = (Func<double, double, double, double, bool>) ((double x, double y, double z, double distance) => {
     var distanceToPlayer = (x - vars.hobX.Current) * (x - vars.hobX.Current) +
                            (y - vars.hobY.Current) * (y - vars.hobY.Current) +
                            (z - vars.hobZ.Current) * (z - vars.hobZ.Current);
-    return distanceToPlayer < 25.0f;
+    return distanceToPlayer < (distance * distance);
   });
 
   var addAnimationSetting = (Action<double, double, double, string, string, string>)((double x, double y, double z, string id, string text, string tooltip) => {
     settings.Add(id, false, text);
     settings.SetToolTip(id, tooltip);
-    vars.splits[id] = (Func<bool>)(() => vars.moveset.Old != 16 && vars.moveset.Current == 16 && vars.CloseToPoint(x, y, z));
+    // For most animations, I consider "close to a point" to be within 5 units
+    vars.splits[id] = (Func<bool>)(() => vars.moveset.Old != 16 && vars.moveset.Current == 16 && vars.CloseToPoint(x, y, z, 5.0));
   });
   var addLevelChangeSetting = (Action<string, string, string, string, string>)((string fromLevel, string toLevel, string id, string text, string tooltip) => {
     settings.Add(id, false, text);
@@ -184,14 +184,15 @@ split {
         vars.log("Player has exited underwater, removing enter_underwater in case we re-enter");
         vars.completedSplits.Remove("enter_underwater");
       } else if (splitId == "enter_underwater") {
-        if (vars.completedSplits.Contains("exit_underwater")) {
-          vars.log("Player has previously exited underwater, unsplit since we are re-entering.");
+        if (vars.completedSplits.Contains("exit_underwater") && settings["exit_underwater"]) {
+          vars.log("Re-entered underwater after previously exiting; unsplitting.");
+          vars.completedSplits.Remove("exit_underwater");
           new TimerModel{CurrentState = timer}.UndoSplit();
           return false;
         }
       }
 
-      vars.log("Completed " + splitId + " returning setting value: " + settings[splitId]);
+      vars.log("Completed " + splitId + " splitting based on setting value: " + settings[splitId]);
       return settings[kvp.Key];
     }
   }
@@ -199,13 +200,14 @@ split {
   if (vars.moveset.Changed && vars.moveset.Old == 16) {
     vars.log("Completed an animation, checking for end of game split");
     vars.log(vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
-    if (vars.CloseToPoint(0.4, 126, 102.3)) {
+    // It is possible to move (roll, blink, etc) before accepting the queen's offer, so for this one "close to point" is 10.0.
+    if (vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
       vars.log("Completed the game (bad ending)");
       return true;
     }
   }
 
-  if (vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3)) {
+  if (vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3, 5.0)) {
     vars.log("Backup split for 'end of game' (e.g. good ending)");
     return true;
   }
