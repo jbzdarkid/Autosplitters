@@ -16,10 +16,11 @@ startup {
     { "FORGE",      "MEDIA/LEVELS/DUNGEONS/SWORD FORGE/MASTER_SWORD_FORGE.LAYOUT" },
     { "PUNCH",      "MEDIA/LEVELS/DUNGEONS/TUTORIAL/GETPUNCH_WORKSHOP.LAYOUT" },
     { "WARP",       "MEDIA/LEVELS/DUNGEONS/TUTORIAL/GETWARP_WORKSHOP.LAYOUT" },
+    { "ELECTRIC",   "MEDIA/LEVELS/DUNGEONS/ELECTRICAL DUNGEONS/ELECTRIC_CENTRAL_DUNGEON.LAYOUT" },
     { "FACTORY",    "MEDIA/LEVELS/DUNGEONS/PRISON/WORLDMACHINE_DUNGEON.LAYOUT" },
     { "SPIN ROOM",  "MEDIA/LEVELS/DUNGEONS/FOREST DUNGEONS/DUNGEON_MOTHERHOB.LAYOUT" },
     { "ELEC CAVE",  "MEDIA/LEVELS/DUNGEONS/OVERWORLD/10_10_FORESTTOTOWER.LAYOUT" },
-    { "GRAPPLE",  "MEDIA/LEVELS/DUNGEONS/TUTORIAL/PAX_DUNGEON.LAYOUT" },
+    { "GRAPPLE",    "MEDIA/LEVELS/DUNGEONS/TUTORIAL/PAX_DUNGEON.LAYOUT" },
     { "UNDERWATER", "MEDIA/LEVELS/DUNGEONS/WATER/ABYSS.LAYOUT" },
   };
   vars.splits = new Dictionary<string, Func<bool>>();
@@ -54,6 +55,9 @@ startup {
   addLevelChangeSetting("PUNCH",      "OVERWORLD",  "exit_punch",       "Exit Punch",           "Exiting the punch cave after getting the upgrade");
   addLevelChangeSetting("OVERWORLD",  "WARP",       "enter_warp",       "Enter Warp",           "Entering the warp cave before getting the upgrade");
   addLevelChangeSetting("WARP",       "OVERWORLD",  "exit_warp",        "Exit Warp",            "Exiting the warp cave after getting the upgrade");
+  addAnimationSetting(24.2, 4, -246.9,              "electric_lever",   "Activate Spider",      "Powering up the spider in the electrical area");
+  addLevelChangeSetting("OVERWORLD",  "ELECTRIC",   "enter_electric",   "Enter Electrical",     "Entering the underground electrical dungeon");
+  addLevelChangeSetting("ELECTRIC",   "OVERWORLD",  "exit_electric",    "Exit Electrical",      "Exiting the underground electrical dungeon");
   addLevelChangeSetting("OVERWORLD",  "FACTORY",    "enter_factory",    "Enter Factory",        "Entering the large dome in wetlands");
   addLevelChangeSetting("FACTORY",    "OVERWORLD",  "exit_factory",     "Exit Factory",         "Exiting the factory after grabbing the forest tablet");
   addAnimationSetting(181.0, 0.8, -361.6,           "place_forest",     "Activate Forest",      "Placing the forest tablet to raise the land");
@@ -198,8 +202,7 @@ split {
   }
 
   if (vars.moveset.Changed && vars.moveset.Old == 16) {
-    vars.log("Completed an animation, checking for end of game split");
-    vars.log(vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+    vars.log("Completed an animation, checking for end of game split: " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
     // It is possible to move (roll, blink, etc) before accepting the queen's offer, so for this one "close to point" is 10.0.
     if (vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
       vars.log("Completed the game (bad ending)");
