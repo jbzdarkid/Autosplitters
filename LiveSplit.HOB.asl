@@ -149,9 +149,8 @@ update {
 
 start {
   if (vars.inMenu.Old == 0.5f && vars.inMenu.Current == 0.0f) {
-    vars.log("Exited the menu, checking for start point");
-    vars.log(vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
-    if (vars.CloseToPoint(3.2, 0.2, -529.4)) {
+    vars.log("Exited the menu, checking for start point " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+    if (vars.CloseToPoint(3.2, 0.2, -529.4, 5.0)) {
       vars.log("Starting run");
       vars.completedSplits.Clear();
       vars.deathCount = 0;
@@ -162,9 +161,8 @@ start {
 
 reset {
   if (vars.inMenu.Old < 0.5f && vars.inMenu.Current == 0.5f) {
-    vars.log("Entered the menu, checking for new game");
-    vars.log(vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
-    if (vars.CloseToPoint(3.2, 0.2, -529.4)) {
+    vars.log("Entered the menu, checking for new game " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+    if (vars.CloseToPoint(3.2, 0.2, -529.4, 5.0)) {
       vars.log("Resetting run");
       return true;
     }
@@ -172,12 +170,19 @@ reset {
 }
 
 split {
+  if (vars.moveset.Changed && vars.moveset.New == 16) {
+    vars.log("Started an animation at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+  }
+
   foreach (var kvp in vars.splits) {
     string splitId = kvp.Key;
     var checkSplit = kvp.Value;
 
     // Special casing for the Sprite Mom core, since it's in the same location as the forest corruption
-    if (splitId == "sprite_core" && !vars.completedSplits.Contains("intro_corruption")) continue;
+    if (splitId == "sprite_core" && !vars.completedSplits.Contains("intro_corrupt")) continue;
+
+    // Special casing for the Activate Colossus split, since it triggers when you skip the water table cutscene
+    if (splitId == "robot_wakeup" && !vars.completedSplits.Contains("forest_core")) continue;
 
     if (vars.completedSplits.Contains(splitId)) continue; // Do not evaluate splits if they were already completed
     if (checkSplit()) {
@@ -201,13 +206,10 @@ split {
     }
   }
 
-  if (vars.moveset.Changed && vars.moveset.Old == 16) {
-    vars.log("Completed an animation, checking for end of game split: " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
-    // It is possible to move (roll, blink, etc) before accepting the queen's offer, so for this one "close to point" is 10.0.
-    if (vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
-      vars.log("Completed the game (bad ending)");
-      return true;
-    }
+  // It is possible to move (roll, blink, etc) before accepting the queen's offer, so for this one "close to point" is a bit larger.
+  if (vars.moveset.Changed && vars.moveset.Old == 16 && vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
+    vars.log("Completed the game (bad ending)");
+    return true;
   }
 
   if (vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3, 5.0)) {
