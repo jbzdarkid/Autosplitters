@@ -148,6 +148,9 @@ update {
 }
 
 start {
+  if (vars.inMenu.Changed && vars.CloseToPoint(3.2, 0.2, -529.4, 5.0)) {
+    vars.log("inMenu changed while near start point: " + vars.inMenu.Old + " " + vars.inMenu.Current);
+  }
   if (vars.inMenu.Old == 0.5f && vars.inMenu.Current == 0.0f) {
     vars.log("Exited the menu, checking for start point " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
     if (vars.CloseToPoint(3.2, 0.2, -529.4, 5.0)) {
@@ -170,7 +173,7 @@ reset {
 }
 
 split {
-  if (vars.moveset.Changed && vars.moveset.New == 16) {
+  if (vars.moveset.Changed && vars.moveset.Current == 16) {
     vars.log("Started an animation at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
   }
 
