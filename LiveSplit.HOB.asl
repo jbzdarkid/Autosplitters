@@ -59,6 +59,7 @@ startup {
   addLevelChangeSetting("OVERWORLD",  "ELECTRIC",   "enter_electric",   "Enter Electrical",     "Entering the underground electrical dungeon");
   addLevelChangeSetting("ELECTRIC",   "OVERWORLD",  "exit_electric",    "Exit Electrical",      "Exiting the underground electrical dungeon");
   addLevelChangeSetting("OVERWORLD",  "FACTORY",    "enter_factory",    "Enter Factory",        "Entering the large dome in wetlands");
+  addAnimationSetting(141.5, -118.4, 10.5,          "raise_factory",    "Factory Handprint",    "Pressing the wall handprint in factory to raise the land");
   addLevelChangeSetting("FACTORY",    "OVERWORLD",  "exit_factory",     "Exit Factory",         "Exiting the factory after grabbing the forest tablet");
   addAnimationSetting(181.0, 0.8, -361.6,           "place_forest",     "Activate Forest",      "Placing the forest tablet to raise the land");
   addAnimationSetting(257, 25.7, -254.5,            "forest_corrupt",   "Forest Corruption",    "Clearing the corruption in the forest");
