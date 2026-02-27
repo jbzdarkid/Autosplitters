@@ -176,6 +176,9 @@ split {
   if (vars.moveset.Changed && vars.moveset.Current == 16) {
     vars.log("Started an animation at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
   }
+  if (vars.level.Changed) {
+    vars.log("Changed level from '" + vars.level.Old + "' to '" + vars.level.Current + "'");
+  }
 
   foreach (var kvp in vars.splits) {
     string splitId = kvp.Key;
