@@ -214,12 +214,21 @@ split {
   }
 
   // It is possible to move (roll, blink, etc) before accepting the queen's offer, so for this one "close to point" is a bit larger.
-  if (vars.moveset.Changed && vars.moveset.Old == 16 && vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
-    vars.log("Completed the game (bad ending)");
-    return true;
+  // TODO: It seems like, in some cases there are multiple animations in the final cutscene. I added an 'unsplit' in case a second animation starts playing.
+  if (vars.moveset.Changed && vars.CloseToPoint(0.4, 126, 102.3, 10.0)) {
+    if (vars.moveset.Old == 16) {
+      vars.log("Completed the game (bad ending) at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+      vars.completedSplits.Add("bad_ending");
+      return true;
+    } else if (vars.moveset.Current == 16 && vars.completedSplits.Contains("bad_ending")) {
+      vars.log("Unsplitting from bad ending because we started a new animation at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+      vars.completedSplits.Remove("bad_ending");
+      new TimerModel{CurrentState = timer}.UndoSplit();
+      return false;
+    }
   }
 
-  if (vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3, 5.0)) {
+  if (!vars.completedSplits.Contains("bad_ending") && vars.completedSplits.Contains("robot_wakeup") && vars.CloseToPoint(83.5, 0, -92.3, 5.0)) {
     vars.log("Backup split for 'end of game' (e.g. good ending)");
     return true;
   }
