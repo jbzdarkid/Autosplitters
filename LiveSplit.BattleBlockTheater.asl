@@ -49,7 +49,7 @@
 // 127: Level loading?
 // 128: Hatty cutscene
 
-state("BattleBlockTheater") {
+state("BattleBlockTheater", "legacy") {
   int deathCount  : 0x30E7C4, 0x4B4;
   byte level      : 0x30E7D8, 0x8;
   int inLobby     : 0x30E7D8, 0x28C; // TODO: Improve? I tried.
@@ -59,7 +59,7 @@ state("BattleBlockTheater") {
   int squareX     : 0x315420, 0x270;
   int squareY     : 0x315420, 0x274;
 
-/*
+/* These are valid, but unused. I'm not going to port them unless I have to.
   byte chapter    : 0x30E7C0, 0x37F6;
   byte gemCount   : 0x30E7C0, 0x37F8;
   string levelName: 0x30E7C0, 0x3860;
@@ -69,6 +69,9 @@ state("BattleBlockTheater") {
   byte levelWidth : 0x315420, 0x20, 0x109;
   byte levelHeight: 0x315420, 0x20, 0x10A;
 */
+}
+
+state("BattleBlockTheater", "latest (unsupported)") {
 }
 
 startup {
@@ -95,6 +98,19 @@ startup {
 }
 
 init {
+  switch (modules.First().ModuleMemorySize) {
+  case 4136960:
+    version = "legacy";
+    vars.log("Using legacy version");
+    break;
+  case 15273984:
+    version = "latest (unuspported)";
+    vars.log("Using latest version");
+    break;
+  default:
+    throw new Exception("Unknown version: " + modules.First().ModuleMemorySize);
+  }
+
   vars.deathCount = current.deathCount;
 
   vars.updateText = false;
