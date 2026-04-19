@@ -135,10 +135,10 @@ startup {
   settings.Add("swords", false, "Split when collecting any sword upgrade");
   settings.Add("hearts", false, "Split when collecting any heart piece");
   settings.Add("energies", false, "Split when collecting any energy upgrade");
-  addEnterLevelSetting("POST-ELECTRIC", "enter_dung", "Enter Electric Transition Cave");
-  addExitLevelSetting("POST-ELECTRIC",  "exit_dung", "Exit Electric Transition Cave");
-  addEnterLevelSetting("ROCKET LAUNCHER", "enter_dung", "Enter Lake Dungeon");
-  addExitLevelSetting("ROCKET LAUNCHER",  "exit_dung", "Exit Lake Dungeon");
+  addEnterLevelSetting("POST-ELECTRIC", "enter_dung", "Enter Electric Transition", "Entering the cave after electric corruption");
+  addExitLevelSetting("POST-ELECTRIC",  "exit_dung", "Exit Electric Transition", "Exiting the cave after electric corruption");
+  addEnterLevelSetting("ROCKET LAUNCHER", "enter_dung", "Enter Lake Dungeon", "Entering the cave near the northwest lore room");
+  addExitLevelSetting("ROCKET LAUNCHER",  "exit_dung", "Exit Lake Dungeon", "Exiting the cave near the northwest lore room");
 
   settings.Add("deathcount", false, "Override first text component with a Death Counter");
   vars.deathCount = 0;
