@@ -10,7 +10,7 @@ startup {
     System.IO.File.AppendAllText(vars.logFilePath, time + ": " + logLine + "\r\n");
   });
 
-  var levelNames = new Dictionary<string, string> {
+  vars.levelNames = new Dictionary<string, string> {
     { "OVERWORLD",  "MEDIA/LEVELS/OUTSIDE_CONFIG.DAT" },
     { "WAKEUP",     "MEDIA/LEVELS/DUNGEONS/GETGLOVEDUNGEON/GLOVE_WAKEUPDUNGEON.LAYOUT" },
     { "FORGE",      "MEDIA/LEVELS/DUNGEONS/SWORD FORGE/MASTER_SWORD_FORGE.LAYOUT" },
@@ -75,13 +75,13 @@ startup {
   var addEnterLevelSetting = (Action<string, string, string, string>)((string toLevel, string id, string text, string tooltip) => {
     settings.Add(id, false, text);
     settings.SetToolTip(id, tooltip);
-    toLevel = levelNames[toLevel];
+    toLevel = vars.levelNames[toLevel];
     vars.splits[id] = (Func<bool>)(() => vars.level.Changed && vars.level.Current == toLevel);
   });
   var addExitLevelSetting = (Action<string, string, string, string>)((string fromLevel, string id, string text, string tooltip) => {
     settings.Add(id, false, text);
     settings.SetToolTip(id, tooltip);
-    fromLevel = levelNames[fromLevel];
+    fromLevel = vars.levelNames[fromLevel];
     vars.splits[id] = (Func<bool>)(() => vars.level.Changed && vars.level.Old == fromLevel);
   });
   var addAnimationSetting = (Action<double, double, double, string, string, string, string>)((double x, double y, double z, string animation, string id, string text, string tooltip) => {
@@ -135,6 +135,7 @@ startup {
   settings.Add("swords", false, "Split when collecting any sword upgrade");
   settings.Add("hearts", false, "Split when collecting any heart piece");
   settings.Add("energies", false, "Split when collecting any energy upgrade");
+  settings.Add("purchase", false, "Split when purchasing upgrades in the forge");
   addEnterLevelSetting("POST-ELECTRIC", "enter_trans", "Enter Electric Transition", "Entering the cave after electric corruption");
   addExitLevelSetting("POST-ELECTRIC",  "exit_trans", "Exit Electric Transition", "Exiting the cave after electric corruption");
   addEnterLevelSetting("ROCKET LAUNCHER", "enter_dung", "Enter Lake Dungeon", "Entering the cave near the northwest lore room");
@@ -187,8 +188,9 @@ init {
   vars.moveset = new MemoryWatcher<int>(new DeepPointer(gameWorld, 0x50, 0xA8, 0x120, 0x2C));
   vars.animation = new StringWatcher(new DeepPointer(gameWorld, 0x50, 0xA8, 0xA8, 0x04, 0x34), 200);
   vars.animation2 = new StringWatcher(new DeepPointer(gameWorld, 0x50, 0xA8, 0xA8, 0x04, 0x34, 0), 200);
+  vars.money = new MemoryWatcher<int>(new DeepPointer(gameWorld, 0x50, 0x4CC));
 
-  vars.watchers = new MemoryWatcherList() { vars.inMenu, vars.hobX, vars.hobY, vars.hobZ, vars.level, vars.moveset, vars.animation, vars.animation2 };
+  vars.watchers = new MemoryWatcherList() { vars.inMenu, vars.hobX, vars.hobY, vars.hobZ, vars.level, vars.moveset, vars.animation, vars.animation2, vars.money };
   vars.log("Found all sigscans, ready for start of run");
 }
 
@@ -286,6 +288,11 @@ split {
 
   if (settings["energies"] && vars.StartedAnimation("ENERGY")) {
     vars.log("Collected energy upgrade at " + vars.hobX.Current + " " + vars.hobY.Current + " " + vars.hobZ.Current);
+    return true;
+  }
+
+  if (settings["purchase"] && vars.level.Current == vars.levelNames["FORGE"] && vars.money.Old > vars.money.Current) {
+    vars.log("Money decreased by " + (vars.money.Old - vars.money.Current) + " while in map " + vars.level.Current);
     return true;
   }
 
