@@ -97,11 +97,39 @@ startup {
 }
 
 init {
+  SigScanTarget blackoutFrameScan;
+  
+  switch (modules.First().ModuleMemorySize) {
+  case 19038208:
+    version = "Old Patch";
+    // Monitor.BlackOut
+    blackoutFrameScan = new SigScanTarget(0xF,
+      "83 EC 08",    // sub esp, 08
+      "E8 35000000", // call UnityEngine.Time:get_frameCount
+      "8B C8",       // mov ecx, eax
+      "03 4D 08"     // add ecx, [ebp+08]
+    );
+    break;
+  case 659456:
+    version = "Latest Patch";
+    // Monitor.BlackOut
+    blackoutFrameScan = new SigScanTarget(0x7,
+      "8B C8",          // mov ecx, eax
+      "03 4D 08",       // add ecx, [ebp+08]
+      "8B 05 ????????"  // mov eax, [Monitor.wantBlackoutUntilFrame]
+    );
+    break;
+  default:
+    throw new Exception("Unknown version: " + modules.First().ModuleMemorySize);
+  }
+  vars.log("Initialized with version " + version);
+  
   IntPtr saveDataPtr = IntPtr.Zero;
   IntPtr blackoutFramePtr = IntPtr.Zero;
   foreach (var page in game.MemoryPages()) {
     var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
     if (saveDataPtr == IntPtr.Zero) {
+      // public static SaveData it
       saveDataPtr = scanner.Scan(new SigScanTarget(0x16, // Targeting byte 22 (hex 0x16)
         "83 C4 10",   // add esp, 10
         "83 EC 0C",   // sub esp, 0C
@@ -111,12 +139,7 @@ init {
       ));
     }
     if (blackoutFramePtr == IntPtr.Zero) {
-      blackoutFramePtr = scanner.Scan(new SigScanTarget(0xF, // Targeting byte 15 (hex 0xF)
-        "83 EC 08",    // sub esp, 08
-        "E8 35000000", // call UnityEngine.Time:get_frameCount
-        "8B C8",       // mov ecx, eax
-        "03 4D 08"     // add ecx, [ebp+08]
-      ));
+      blackoutFramePtr = scanner.Scan(blackoutFrameScan);
     }
   }
   if (saveDataPtr == IntPtr.Zero) throw new Exception("Couldn't find saveData");
