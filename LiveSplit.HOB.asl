@@ -35,7 +35,6 @@ startup {
     // Unused (for splits):
     // ITEM_PLUG_WALLBATTERY
     // INT_CONTROLLER_ORB_ACTIVATE
-    // INT_GLOVE_PRESS_FLAT
     // INT_TITAN_CORE_INSERT_FIRST
     // INT_TITAN_CORE_INSERT_SECOND
     // INT_TITAN_CORE_INSERT_FINAL
@@ -44,6 +43,7 @@ startup {
     // CINE_DOOR_PRY_AXEKNIGHT_PLAYER
 
     { "BUTTON", "INT_GLOVE_PRESS_WALL" },
+    { "FLAT_BUTTON", "INT_GLOVE_PRESS_FLAT" },
     { "SWITCH", "SWITCH_WALL_PULL" },
     { "HANDLE", "INT_HANDLE_TURN" },
     { "TABLET_GET", "CINE_WORLDPIECE_WATER_PICKUP" },
@@ -93,39 +93,39 @@ startup {
   settings.Add("anySplits", true, "Any% Splits");
   settings.CurrentDefaultParent = "anySplits";
 
-  addEnterLevelSetting("WAKEUP",                        "enter_wakeup",     "Intro clip",           "Clipping into the intro building to start the credits");
-  addExitLevelSetting("WAKEUP",                         "exit_wakeup",      "Wakeup",               "Exiting the intro building after getting the arm");
-  addEnterLevelSetting("FORGE",                         "enter_forge",      "Enter Forge",          "Entering the forge before getting the sword");
-  addExitLevelSetting("FORGE",                          "exit_forge",       "Exit Forge",           "Exiting the forge after getting the sword");
-  addEnterLevelSetting("PUNCH",                         "enter_punch",      "Enter Punch",          "Entering the punch cave before getting the upgrade");
-  addExitLevelSetting("PUNCH",                          "exit_punch",       "Exit Punch",           "Exiting the punch cave after getting the upgrade");
-  addEnterLevelSetting("WARP",                          "enter_warp",       "Enter Warp",           "Entering the warp cave before getting the upgrade");
-  addExitLevelSetting("WARP",                           "exit_warp",        "Exit Warp",            "Exiting the warp cave after getting the upgrade");
-  addAnimationSetting(24.2, 4, -246.9, "HANDLE",        "electric_lever",   "Activate Spider",      "Powering up the spider in the electrical area");
-  addEnterLevelSetting("ELECTRIC",                      "enter_electric",   "Enter Electrical",     "Entering the underground electrical dungeon");
-  addExitLevelSetting("ELECTRIC",                       "exit_electric",    "Exit Electrical",      "Exiting the underground electrical dungeon");
-  addEnterLevelSetting("FACTORY",                       "enter_factory",    "Enter Factory",        "Entering the large dome in wetlands");
-  addAnimationSetting(141.5, -118.4, 10.5, "BUTTON",    "raise_factory",    "Factory Handprint",    "Pressing the wall handprint in factory to raise the land");
-  addExitLevelSetting("FACTORY",                        "exit_factory",     "Exit Factory",         "Exiting the factory after grabbing the forest tablet");
-  addAnimationSetting(181.0, 0.8, -361.6, "TABLET_PUT", "place_forest",     "Activate Forest",      "Placing the forest tablet to raise the land");
-  addAnimationSetting(257, 25.7, -254.5, "CORRUPTION",  "forest_corrupt",   "Forest Corruption",    "Clearing the corruption in the forest");
-  addAnimationSetting(-17.5, 8.2, -111, "CORRUPTION",   "electric_corrupt", "Electric Corruption",  "Clearing the corruption in the electrical area");
-  addAnimationSetting(-102.9, 0.8, -38.4, "TABLET_PUT", "place_cemetery",   "Activate Cemetery",    "Placing the cemetery tablet to raise the land");
-  addAnimationSetting(-11.6, 6, 69, "CORRUPTION",       "cemetery_corrupt", "Cemetery Corruption",  "Clearing the corruption in the cemetery");
-  addEnterLevelSetting("GRAPPLE",                       "enter_grapple",    "Enter Grapple",        "Entering the grapple cave before getting the upgrade");
-  addExitLevelSetting("GRAPPLE",                        "exit_grapple",     "Exit Grapple",         "Exiting the grapple cave after getting the upgrade");
-  addAnimationSetting(-45.9, 14, 123.5, "TABLET_GET",   "grab_water",       "Water Tablet",         "Pikcing up the water tablet");
-  addAnimationSetting(-317.5, 10.8, 86.3, "TABLET_PUT", "place_water",      "Activate Water",       "Placing the water tablet to raise the land");
-  addEnterLevelSetting("UNDERWATER",                    "enter_underwater", "Enter Underwater",     "Entering the underwater dungeon (only splits once)");
-  addAnimationSetting(-126.3, 0, -36.8, "CORRUPTION",   "water_corrupt",    "Water Corruption",     "Clearing the corruption underwater");
-  addExitLevelSetting("UNDERWATER",                     "exit_underwater",  "Exit Underwater",      "Exiting the underwater dungeon (unsplits if you re-enter underwater)");
-  addAnimationSetting(-338.1, 6, 18.9, "CORRUPTION",    "pipes_corrupt",    "Pipes Corruption",     "Clearing the corruption in the pipes area");
-  addAnimationSetting(-78.3, 1, -383.3, "CORRUPTION",   "intro_corrupt",    "Intro Corruption",     "Clearing the corruption in the introduction area");
-  addAnimationSetting(-338.4, -2, -282.1, "CORRUPTION", "wetlands_corrupt", "Wetlands Corruption",  "Clearing the corruption in the wetlands");
-  addAnimationSetting(-372.4, -7.1, -304.2, "CORE",     "wetlands_core",    "Wetlands Core",        "Picking up the core from the colossus in wetlands");
-  addAnimationSetting(256.3, 25.7, -252.8, "CORE",      "sprite_core",      "Sprite Mom Core",      "Picking up the core from Sprite Mom in forest");
-  addAnimationSetting(299, 13, -145, "CORE",            "forest_core",      "Forest Core",          "Picking up the core from the colossus in forest");
-  addAnimationSetting(51, 1.6, 98.4, "BUTTON",          "robot_wakeup",     "Activate Colossus",    "Pressing the handprint after inserting all 3 cores");
+  addEnterLevelSetting("WAKEUP",                         "enter_wakeup",     "Intro clip",           "Clipping into the intro building to start the credits");
+  addExitLevelSetting("WAKEUP",                          "exit_wakeup",      "Wakeup",               "Exiting the intro building after getting the arm");
+  addEnterLevelSetting("FORGE",                          "enter_forge",      "Enter Forge",          "Entering the forge before getting the sword");
+  addExitLevelSetting("FORGE",                           "exit_forge",       "Exit Forge",           "Exiting the forge after getting the sword");
+  addEnterLevelSetting("PUNCH",                          "enter_punch",      "Enter Punch",          "Entering the punch cave before getting the upgrade");
+  addExitLevelSetting("PUNCH",                           "exit_punch",       "Exit Punch",           "Exiting the punch cave after getting the upgrade");
+  addEnterLevelSetting("WARP",                           "enter_warp",       "Enter Warp",           "Entering the warp cave before getting the upgrade");
+  addExitLevelSetting("WARP",                            "exit_warp",        "Exit Warp",            "Exiting the warp cave after getting the upgrade");
+  addAnimationSetting(24.2, 4, -246.9, "HANDLE",         "electric_lever",   "Activate Spider",      "Powering up the spider in the electrical area");
+  addEnterLevelSetting("ELECTRIC",                       "enter_electric",   "Enter Electrical",     "Entering the underground electrical dungeon");
+  addExitLevelSetting("ELECTRIC",                        "exit_electric",    "Exit Electrical",      "Exiting the underground electrical dungeon");
+  addEnterLevelSetting("FACTORY",                        "enter_factory",    "Enter Factory",        "Entering the large dome in wetlands");
+  addAnimationSetting(141.5, -118.4, 10.5, "BUTTON",     "raise_factory",    "Factory Handprint",    "Pressing the wall handprint in factory to raise the land");
+  addExitLevelSetting("FACTORY",                         "exit_factory",     "Exit Factory",         "Exiting the factory after grabbing the forest tablet");
+  addAnimationSetting(181.0, 0.8, -361.6, "TABLET_PUT",  "place_forest",     "Activate Forest",      "Placing the forest tablet to raise the land");
+  addAnimationSetting(257, 25.7, -254.5, "CORRUPTION",   "forest_corrupt",   "Forest Corruption",    "Clearing the corruption in the forest");
+  addAnimationSetting(-17.5, 8.2, -111, "CORRUPTION",    "electric_corrupt", "Electric Corruption",  "Clearing the corruption in the electrical area");
+  addAnimationSetting(-102.9, 0.8, -38.4, "TABLET_PUT",  "place_cemetery",   "Activate Cemetery",    "Placing the cemetery tablet to raise the land");
+  addAnimationSetting(-11.6, 6, 69, "CORRUPTION",        "cemetery_corrupt", "Cemetery Corruption",  "Clearing the corruption in the cemetery");
+  addEnterLevelSetting("GRAPPLE",                        "enter_grapple",    "Enter Grapple",        "Entering the grapple cave before getting the upgrade");
+  addExitLevelSetting("GRAPPLE",                         "exit_grapple",     "Exit Grapple",         "Exiting the grapple cave after getting the upgrade");
+  addAnimationSetting(-45.9, 14, 123.5, "TABLET_GET",    "grab_water",       "Water Tablet",         "Pikcing up the water tablet");
+  addAnimationSetting(-317.5, 10.8, 86.3, "TABLET_PUT",  "place_water",      "Activate Water",       "Placing the water tablet to raise the land");
+  addEnterLevelSetting("UNDERWATER",                     "enter_underwater", "Enter Underwater",     "Entering the underwater dungeon (only splits once)");
+  addAnimationSetting(-126.3, 0, -36.8, "CORRUPTION",    "water_corrupt",    "Water Corruption",     "Clearing the corruption underwater");
+  addExitLevelSetting("UNDERWATER",                      "exit_underwater",  "Exit Underwater",      "Exiting the underwater dungeon (unsplits if you re-enter underwater)");
+  addAnimationSetting(-338.1, 6, 18.9, "CORRUPTION",     "pipes_corrupt",    "Pipes Corruption",     "Clearing the corruption in the pipes area");
+  addAnimationSetting(-78.3, 1, -383.3, "CORRUPTION",    "intro_corrupt",    "Intro Corruption",     "Clearing the corruption in the introduction area");
+  addAnimationSetting(-338.4, -2, -282.1, "CORRUPTION",  "wetlands_corrupt", "Wetlands Corruption",  "Clearing the corruption in the wetlands");
+  addAnimationSetting(-372.4, -7.1, -304.2, "CORE",      "wetlands_core",    "Wetlands Core",        "Picking up the core from the colossus in wetlands");
+  addAnimationSetting(256.3, 25.7, -252.8, "TABLET_GET", "sprite_core",      "Sprite Mom Core",      "Picking up the core from Sprite Mom in forest");
+  addAnimationSetting(299, 13, -145, "CORE",             "forest_core",      "Forest Core",          "Picking up the core from the colossus in forest");
+  addAnimationSetting(51, 1.6, 98.4, "BUTTON",           "robot_wakeup",     "Activate Colossus",    "Pressing the handprint after inserting all 3 cores");
 
   settings.CurrentDefaultParent = null;
   settings.Add("miscSplits", true, "Miscellaneous splits");
@@ -140,6 +140,11 @@ startup {
   addExitLevelSetting("POST-ELECTRIC",  "exit_trans", "Exit Electric Transition", "Exiting the cave after electric corruption");
   addEnterLevelSetting("ROCKET LAUNCHER", "enter_dung", "Enter Lake Dungeon", "Entering the cave near the northwest lore room");
   addExitLevelSetting("ROCKET LAUNCHER",  "exit_dung", "Exit Lake Dungeon", "Exiting the cave near the northwest lore room");
+
+  addAnimationSetting(-384, 15.537, 188.86, "FLAT_BUTTON",  "water_toilet",   "Flush",        "Pressing the handprint to flush the water toilet");
+  addAnimationSetting(-50.34, 14.02, 125, "BUTTON",         "water_bridge",   "Bridge Water", "Pressing the handprint at the bridge to send the water west");
+  addAnimationSetting(144, 0, 97, "BUTTON",                 "water_lake",     "Lake Water",   "Pressing the handprint to fill the western lake");
+  addAnimationSetting(173.5, 0, -250.8, "BUTTON",           "water_forest",   "Forest Water", "Pressing the final handprint to fill the forest core area");
 
   settings.Add("deathcount", false, "Override first text component with a Death Counter");
   vars.deathCount = 0;
