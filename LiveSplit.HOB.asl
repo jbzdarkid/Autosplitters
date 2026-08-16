@@ -227,7 +227,11 @@ start {
     if (vars.CloseToPoint(3.2, 0.2, -529.4)) {
       vars.log("Starting run");
       vars.completedSplits.Clear();
-      vars.deathCount = 0;
+      if (vars.tcs != null && settings["deathcount"]) {
+        vars.deathCount = 0;
+        vars.tcs.Text1 = "Deaths:";
+        vars.tcs.Text2 = vars.deathCount.ToString();
+      }
       return true;
     }
   }
